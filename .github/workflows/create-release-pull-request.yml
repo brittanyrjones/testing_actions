@@ -141,7 +141,13 @@ jobs:
           sed -i "s/version = \"$ORIG_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
 
       - name: Update CHANGELOG.md
-        run: echo "## ${{ steps.bump_version.outputs.new_version }}" >> CHANGELOG.md
+        run: |
+          echo "## $NEW_VERSION" >> CHANGELOG.md.tmp
+          echo "" >> CHANGELOG.md.tmp
+          git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s" >> CHANGELOG.md.tmp
+          echo "" >> CHANGELOG.md.tmp
+          cat CHANGELOG.md >> CHANGELOG.md.tmp
+          mv CHANGELOG.md.tmp CHANGELOG.md
 
       - name: Commit and push changes
         run: |
