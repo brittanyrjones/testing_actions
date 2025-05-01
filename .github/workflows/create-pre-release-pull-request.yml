@@ -8,6 +8,9 @@ on:
         description: 'Branch to create beta release from'
         required: true
         default: 'main'
+        
+permissions:
+  contents: write
 
 jobs:
   create-beta-release:
