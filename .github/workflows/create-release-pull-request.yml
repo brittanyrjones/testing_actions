@@ -19,7 +19,7 @@ on:
 
 jobs:
   beta-and-create-release-branch:
-    runs-on: pub-hk-ubuntu-24.04-ip
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version: ["3.10"]
