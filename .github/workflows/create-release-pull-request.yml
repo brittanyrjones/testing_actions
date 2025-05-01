@@ -1,0 +1,167 @@
+name: Create Release Branch
+
+on:
+  # Allow manual trigger, e.g. for testing. This can be changed to a cron job in the future, or some other custom trigger.
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type (major, minor, patch)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+  push:
+    branches:
+      - 'beta-release-v*'  # Matches beta-release-v0.1.0, beta-release-v1.2.3, etc.
+
+jobs:
+  beta-and-create-release-branch:
+    runs-on: pub-hk-ubuntu-24.04-ip
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Install the project
+        run: uv sync --all-extras --dev
+
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tox
+        run: tox
+
+      - name: Get current version
+        id: current_version
+        run: |
+          CURRENT_VERSION=$(grep -Po '(?<=version = ")[^"]+' pyproject.toml)
+          
+          # Validate current version format
+          if ! [[ $CURRENT_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: Current version '$CURRENT_VERSION' does not match semantic versioning format (X.Y.Z)"
+            exit 1
+          fi
+          
+          echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          # Determine if this is a beta release (any branch other than main)
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            BUMP_TYPE="beta"
+            echo "Running in beta mode from branch: ${{ github.ref }}"
+          else
+            BUMP_TYPE="${{ github.event.inputs.bump_type || 'patch' }}"
+          fi
+          
+          # Split version into parts
+          IFS='.' read -r -a version_parts <<< "${{ steps.current_version.outputs.version }}"
+          
+          # Validate each version part is a number
+          for part in "${version_parts[@]}"; do
+            if ! [[ $part =~ ^[0-9]+$ ]]; then
+              echo "Error: Version part '$part' is not a valid number"
+              exit 1
+            fi
+          done
+          
+          # Store original version for changelog
+          ORIG_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
+          
+          case "$BUMP_TYPE" in
+            major)
+              ((version_parts[0]++))
+              version_parts[1]=0
+              version_parts[2]=0
+              ;;
+            minor)
+              ((version_parts[1]++))
+              version_parts[2]=0
+              ;;
+            patch)
+              ((version_parts[2]++))
+              ;;
+          esac
+          
+          # Join version parts back together
+          NEW_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
+          
+          # Validate new version is greater than current version
+          if ! python -c "from packaging import version; assert version.parse('$NEW_VERSION') > version.parse('$ORIG_VERSION'), 'New version must be greater than current version'"; then
+            echo "Error: New version '$NEW_VERSION' is not greater than current version '$ORIG_VERSION'"
+            exit 1
+          fi
+          
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "orig_version=$ORIG_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Configure Github Actions Bot user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create release branch
+        id: create_branch
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          
+          # If it's a beta release (non-main branch), prefix with 'beta-'
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
+            BRANCH_NAME="beta-release-v$NEW_VERSION"
+          else
+            BRANCH_NAME="release-v$NEW_VERSION"
+          fi
+          
+          git checkout -b "$BRANCH_NAME"
+          git push origin "$BRANCH_NAME"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Update version in pyproject.toml
+        run: |
+          ORIG_VERSION="${{ steps.bump_version.outputs.orig_version }}"
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          sed -i "s/version = \"$ORIG_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
+
+      - name: Update CHANGELOG.md
+        run: echo "## ${{ steps.bump_version.outputs.new_version }}" >> CHANGELOG.md
+
+      - name: Commit and push changes
+        run: |
+          git add pyproject.toml CHANGELOG.md
+          git commit -m "Release v${{ steps.bump_version.outputs.new_version }}"
+          git push origin ${{ steps.create_branch.outputs.branch_name }}
+
+      - name: Create PR on GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          ORIG_VERSION="${{ steps.bump_version.outputs.orig_version }}"
+          
+          # Read the PR template and only replace the unique placeholder
+          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE.md | sed "s/{{RELEASE_SUMMARY}}/Release version bump from v$ORIG_VERSION to v$NEW_VERSION/")
+          
+          gh pr create \
+            --title "Release v$NEW_VERSION" \
+            --body "$PR_BODY" \
+            --base main \
+            --head "${{ steps.create_branch.outputs.branch_name }}" \
+            --draft

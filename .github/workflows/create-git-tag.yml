@@ -1,0 +1,31 @@
+name: Create Git Tag on Release Branch Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  create-tag:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release-v') && contains(github.event.pull_request.head.ref, '.')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create Tag and Push
+        run: |
+          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | sed 's/release-//')
+          git tag -a "$VERSION" -m "Release $VERSION"
+          git push origin "$VERSION"
