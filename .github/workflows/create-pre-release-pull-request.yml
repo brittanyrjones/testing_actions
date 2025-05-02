@@ -31,16 +31,18 @@ jobs:
         id: check_beta
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
-          echo "Commit message: $COMMIT_MSG"
           SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
           CLEAN_BRANCH=$(basename "$SRC_BRANCH")
           echo "Source branch: $CLEAN_BRANCH"
+          echo "clean_branch=$CLEAN_BRANCH" >> $GITHUB_OUTPUT
           if [[ -z "$CLEAN_BRANCH" ]] || [[ "$CLEAN_BRANCH" != *beta* ]]; then
             echo "Not a merge from a beta branch. Skipping workflow."
             echo "skip=true" >> $GITHUB_OUTPUT
+            echo "is_beta=false" >> $GITHUB_OUTPUT
             exit 0
           else
             echo "skip=false" >> $GITHUB_OUTPUT
+            echo "is_beta=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Extract bump type from source branch or input
@@ -168,4 +170,13 @@ jobs:
             --base main \
             --head "beta-release-v$NEW_VERSION" \
             --draft
+
+      - name: Validate beta branch name
+        if: steps.check_beta.outputs.skip == 'false'
+        run: |
+          CLEAN_BRANCH="${{ steps.check_beta.outputs.clean_branch }}"
+          if [[ ! "$CLEAN_BRANCH" =~ ^beta-release-v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "Error: Beta branch name must be in the format beta-release-vX.Y.Z"
+            exit 1
+          fi
             

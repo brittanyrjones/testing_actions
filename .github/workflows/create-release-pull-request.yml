@@ -140,22 +140,12 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create release branch
+      - name: Set branch name
         if: steps.check_beta.outputs.skip == 'false'
-        id: create_branch
+        id: set_branch
         run: |
           NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
-          
-          # If it's a beta release (non-main branch), prefix with 'beta-'
-          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
-            BRANCH_NAME="beta-release-v$NEW_VERSION"
-          else
-            BRANCH_NAME="release-v$NEW_VERSION"
-          fi
-          
-          git checkout -b "$BRANCH_NAME"
-          git push origin "$BRANCH_NAME"
-          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          echo "branch_name=beta-release-v$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Update version in pyproject.toml
         if: steps.check_beta.outputs.skip == 'false'
@@ -189,7 +179,7 @@ jobs:
         run: |
           git add pyproject.toml CHANGELOG.md
           git commit -m "Release v${{ steps.bump_version.outputs.new_version }}"
-          git push origin ${{ steps.create_branch.outputs.branch_name }}
+          git push origin ${{ steps.set_branch.outputs.branch_name }}
 
       - name: Create PR on GitHub
         if: steps.check_beta.outputs.skip == 'false'
@@ -206,5 +196,5 @@ jobs:
             --title "Release v$NEW_VERSION" \
             --body "$PR_BODY" \
             --base main \
-            --head "${{ steps.create_branch.outputs.branch_name }}" \
+            --head "${{ steps.set_branch.outputs.branch_name }}" \
             --draft
