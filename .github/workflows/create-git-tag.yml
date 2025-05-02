@@ -31,6 +31,15 @@ jobs:
           echo "Extracted version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+      - name: Extract release notes from CHANGELOG.md
+        id: release_notes
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
+          awk "/^## $VERSION/ {flag=1; next} /^## / {flag=0} flag" CHANGELOG.md > RELEASE_NOTES.md
+          echo 'notes<<EOF' >> $GITHUB_OUTPUT
+          cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT
+
       - name: Create Tag and Push
         run: |
           VERSION="${{ steps.extract_version.outputs.version }}"
@@ -43,5 +52,6 @@ jobs:
         with:
           tag_name: "v${{ steps.extract_version.outputs.version }}"
           draft: true
+          body: "${{ steps.release_notes.outputs.notes }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
