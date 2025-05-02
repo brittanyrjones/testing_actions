@@ -24,8 +24,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
       - name: Check if merge is from beta branch
-        id: check_beta
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
           SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
@@ -33,57 +37,26 @@ jobs:
           echo "Source branch: $CLEAN_BRANCH"
           if [[ -z "$CLEAN_BRANCH" ]] || [[ "$CLEAN_BRANCH" != *beta* ]]; then
             echo "Not a merge from a beta branch. Skipping workflow."
-            echo "skip=true" >> $GITHUB_OUTPUT
-            echo "is_beta=false" >> $GITHUB_OUTPUT
             exit 0
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "is_beta=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Extract bump type from source branch or input
-        if: steps.check_beta.outputs.skip == 'false'
-        id: bump_type
+      - name: Strip beta from version in pyproject.toml
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "bump_type=${{ github.event.inputs.bump_type }}" >> $GITHUB_OUTPUT
-          else
-            COMMIT_MSG=$(git log -1 --pretty=%B)
-            SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
-            CLEAN_BRANCH=$(basename "$SRC_BRANCH")
-            BUMP_TYPE=$(echo "$CLEAN_BRANCH" | grep -oE '(patch|minor|major)' || echo "patch")
-            echo "Bump type: $BUMP_TYPE"
-            echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
-          fi
+          CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
+          FINAL_VERSION=$(echo "$CURRENT_VERSION" | sed -E 's/(beta.*|b[0-9]+.*)$//')
+          FINAL_VERSION=$(echo "$FINAL_VERSION" | sed 's/\.$//')
+          sed -i "s/^version = \".*\"/version = \"$FINAL_VERSION\"/" pyproject.toml
+          echo "Updated version to $FINAL_VERSION in pyproject.toml"
 
-      - name: Set up Python
-        if: steps.check_beta.outputs.skip == 'false'
-        uses: actions/setup-python@v3
-
-      - name: Install uv
-        if: steps.check_beta.outputs.skip == 'false'
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Install the project
-        if: steps.check_beta.outputs.skip == 'false'
-
-        run: uv sync --all-extras --dev
-
-      - name: Install tox
-        if: steps.check_beta.outputs.skip == 'false'
-
-        run: pip install tox
-
-      - name: Run tox
-        if: steps.check_beta.outputs.skip == 'false'
-
-        run: tox
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pyproject.toml
+          git commit -m "Release v$FINAL_VERSION" || echo "No changes to commit"
+          git push origin main
 
       - name: Get current version
-        if: steps.check_beta.outputs.skip == 'false'
         id: current_version
         run: |
           CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
@@ -102,7 +75,6 @@ jobs:
           echo "release_version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
 
       - name: Configure Github Actions Bot user
-        if: steps.check_beta.outputs.skip == 'false'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -114,6 +86,7 @@ jobs:
           BASE_VERSION=$(echo "$CURRENT_VERSION" | sed -E 's/(beta.*|b[0-9]+.*)$//')
           BASE_VERSION=$(echo "$BASE_VERSION" | sed 's/\.$//')
           IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
+          PATCH=${PATCH:-0}
           PATCH=$((PATCH + 1))
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}beta"
           sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
@@ -136,7 +109,6 @@ jobs:
           git push origin "${{ steps.set_branch.outputs.branch_name }}"
 
       - name: Create PR on GitHub
-        if: steps.check_beta.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
