@@ -86,35 +86,40 @@ jobs:
           BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
           echo "Bump type: $BUMP_TYPE"
           CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
-          # Extract numeric version and suffix (e.g., 0.4.0 and beta)
+          # Extract numeric part and suffix
           NUMERIC_VERSION=$(echo "$CURRENT_VERSION" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
           SUFFIX=$(echo "$CURRENT_VERSION" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+//')
-          IFS='.' read -r -a version_parts <<< "$NUMERIC_VERSION"
-          for part in "${version_parts[@]}"; do
-            if ! [[ $part =~ ^[0-9]+$ ]]; then
-              echo "Error: Version part '$part' is not a valid number"
-              exit 1
-            fi
-          done
-          ORIG_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}$SUFFIX"
+          if [[ -z "$NUMERIC_VERSION" ]]; then
+            echo "Error: Could not extract numeric version from $CURRENT_VERSION"
+            exit 1
+          fi
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$NUMERIC_VERSION"
+          if [[ -z "$MAJOR" || -z "$MINOR" || -z "$PATCH" ]]; then
+            echo "Error: Version must have three numeric parts"
+            exit 1
+          fi
+          ORIG_VERSION="$NUMERIC_VERSION$SUFFIX"
           case "$BUMP_TYPE" in
             major)
-              ((version_parts[0]++))
-              version_parts[1]=0
-              version_parts[2]=0
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
               ;;
             minor)
-              ((version_parts[1]++))
-              version_parts[2]=0
+              MINOR=$((MINOR + 1))
+              PATCH=0
               ;;
             patch)
-              ((version_parts[2]++))
+              PATCH=$((PATCH + 1))
               ;;
           esac
-          NEW_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}$SUFFIX"
-          if ! python -c "from packaging import version; assert version.parse('$NEW_VERSION') > version.parse('$CURRENT_VERSION'), 'New version must be greater than current version'"; then
-            echo "Error: New version '$NEW_VERSION' is not greater than current version '$CURRENT_VERSION'"
-            exit 1
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}${SUFFIX}"
+          # Only check if the new version is greater if there's no suffix (i.e., not a pre-release)
+          if [[ -z "$SUFFIX" ]]; then
+            if ! python -c "from packaging import version; assert version.parse('$NEW_VERSION') > version.parse('$CURRENT_VERSION'), 'New version must be greater than current version'"; then
+              echo "Error: New version '$NEW_VERSION' is not greater than current version '$CURRENT_VERSION'"
+              exit 1
+            fi
           fi
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "orig_version=$ORIG_VERSION" >> $GITHUB_OUTPUT
