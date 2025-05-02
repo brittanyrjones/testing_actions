@@ -29,10 +29,9 @@ jobs:
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
           echo "Commit message: $COMMIT_MSG"
-          # Extract source branch from commit message
           SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
           echo "Source branch: $SRC_BRANCH"
-          if [[ -z "$SRC_BRANCH" ]] || [[ ! "$SRC_BRANCH" =~ ^beta ]]; then
+          if [[ -z "$SRC_BRANCH" ]] || [[ "$SRC_BRANCH" != *beta* ]]; then
             echo "Not a merge from a beta branch. Skipping workflow."
             echo "skip=true" >> $GITHUB_OUTPUT
             exit 0
