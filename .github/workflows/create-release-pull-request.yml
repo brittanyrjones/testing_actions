@@ -136,6 +136,10 @@ jobs:
           mv CHANGELOG.md.tmp CHANGELOG.md
           rm NEW_CHANGELOG.md
 
+      - name: Create and checkout release branch
+        run: |
+          git checkout -b "${{ steps.set_branch.outputs.branch_name }}"
+
       - name: Commit and push changes
         if: steps.check_beta.outputs.skip == 'false'
         run: |
