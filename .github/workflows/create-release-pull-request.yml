@@ -34,9 +34,20 @@ jobs:
           if [[ -z "$CLEAN_BRANCH" ]] || [[ "$CLEAN_BRANCH" != *beta* ]]; then
             echo "Not a merge from a beta branch. Skipping workflow."
             echo "skip=true" >> $GITHUB_OUTPUT
+            echo "is_beta=false" >> $GITHUB_OUTPUT
             exit 0
           else
             echo "skip=false" >> $GITHUB_OUTPUT
+            echo "is_beta=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate beta branch name
+        if: steps.check_beta.outputs.skip == 'false'
+        run: |
+          CLEAN_BRANCH="${{ steps.check_beta.outputs.clean_branch }}"
+          if [[ ! "$CLEAN_BRANCH" =~ ^beta-release-v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "Error: Beta branch name must be in the format beta-release-vX.Y.Z"
+            exit 1
           fi
 
       - name: Extract bump type from source branch or input
@@ -156,12 +167,22 @@ jobs:
       - name: Update CHANGELOG.md
         if: steps.check_beta.outputs.skip == 'false'
         run: |
-          echo "## $NEW_VERSION" >> CHANGELOG.md.tmp
-          echo "" >> CHANGELOG.md.tmp
-          git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s" >> CHANGELOG.md.tmp
-          echo "" >> CHANGELOG.md.tmp
-          cat CHANGELOG.md >> CHANGELOG.md.tmp
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          IS_BETA="${{ steps.check_beta.outputs.is_beta }}"
+          if [[ "$IS_BETA" == "true" ]]; then
+            TITLE="$NEW_VERSION (Beta)"
+          else
+            TITLE="$NEW_VERSION"
+          fi
+          {
+            echo "## $TITLE"
+            echo ""
+            git log $(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD --pretty=format:"- %s"
+            echo ""
+          } > NEW_CHANGELOG.md
+          awk 'NR==1{print; system("cat NEW_CHANGELOG.md"); next} 1' CHANGELOG.md > CHANGELOG.md.tmp
           mv CHANGELOG.md.tmp CHANGELOG.md
+          rm NEW_CHANGELOG.md
 
       - name: Commit and push changes
         if: steps.check_beta.outputs.skip == 'false'
