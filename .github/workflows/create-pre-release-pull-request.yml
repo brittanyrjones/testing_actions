@@ -8,6 +8,15 @@ on:
         description: 'Branch to create beta release from'
         required: true
         default: 'main'
+      bump_type:
+        description: 'Version bump type (major, minor, patch)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
 
 jobs:
   create-beta-release:
@@ -18,25 +27,84 @@ jobs:
         with:
           ref: ${{ github.event.inputs.base_branch }}
 
+      - name: Check if merge is from beta branch
+        id: check_beta
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          echo "Commit message: $COMMIT_MSG"
+          SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
+          CLEAN_BRANCH=$(basename "$SRC_BRANCH")
+          echo "Source branch: $CLEAN_BRANCH"
+          if [[ -z "$CLEAN_BRANCH" ]] || [[ "$CLEAN_BRANCH" != *beta* ]]; then
+            echo "Not a merge from a beta branch. Skipping workflow."
+            echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Extract bump type from source branch or input
+        if: steps.check_beta.outputs.skip == 'false'
+        id: bump_type
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "bump_type=${{ github.event.inputs.bump_type }}" >> $GITHUB_OUTPUT
+          else
+            COMMIT_MSG=$(git log -1 --pretty=%B)
+            SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
+            CLEAN_BRANCH=$(basename "$SRC_BRANCH")
+            BUMP_TYPE=$(echo "$CLEAN_BRANCH" | grep -oE '(patch|minor|major)' || echo "patch")
+            echo "Bump type: $BUMP_TYPE"
+            echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+          fi
+
       - name: Get current version
+        if: steps.check_beta.outputs.skip == 'false'
         id: current_version
         run: |
           CURRENT_VERSION=$(grep -Po '(?<=version = ")[^"]+' pyproject.toml)
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Calculate beta version
-        id: calc_version
+      - name: Bump version
+        if: steps.check_beta.outputs.skip == 'false'
+        id: bump_version
         run: |
+          BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+          echo "Bump type: $BUMP_TYPE"
           IFS='.' read -r -a version_parts <<< "${{ steps.current_version.outputs.version }}"
-          ((version_parts[1]++))
-          version_parts[2]=0
+          for part in "${version_parts[@]}"; do
+            if ! [[ $part =~ ^[0-9]+$ ]]; then
+              echo "Error: Version part '$part' is not a valid number"
+              exit 1
+            fi
+          done
+          ORIG_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
+          case "$BUMP_TYPE" in
+            major)
+              ((version_parts[0]++))
+              version_parts[1]=0
+              version_parts[2]=0
+              ;;
+            minor)
+              ((version_parts[1]++))
+              version_parts[2]=0
+              ;;
+            patch)
+              ((version_parts[2]++))
+              ;;
+          esac
           NEW_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
+          if ! python -c "from packaging import version; assert version.parse('$NEW_VERSION') > version.parse('$ORIG_VERSION'), 'New version must be greater than current version'"; then
+            echo "Error: New version '$NEW_VERSION' is not greater than current version '$ORIG_VERSION'"
+            exit 1
+          fi
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          
+          echo "orig_version=$ORIG_VERSION" >> $GITHUB_OUTPUT
+
       - name: Set branch name
         id: set_branch
         run: |
-          echo "branch_name=beta-release-v${{ steps.calc_version.outputs.new_version }}" >> $GITHUB_OUTPUT
+          echo "branch_name=beta-release-v${{ steps.bump_version.outputs.new_version }}" >> $GITHUB_OUTPUT
 
       - name: Create and checkout beta release branch
         run: |
@@ -44,7 +112,7 @@ jobs:
 
       - name: Update Changelog
         run: |
-          NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
           # Prepare new changelog section
           {
             echo "## $NEW_VERSION (Beta)"
@@ -59,23 +127,28 @@ jobs:
           rm NEW_CHANGELOG.md
 
       - name: Update pyproject.toml version
+        if: steps.check_beta.outputs.skip == 'false'
         run: |
-          NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
-          # Update the version in pyproject.toml
-          sed -i.bak "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-          rm pyproject.toml.bak
+          ORIG_VERSION="${{ steps.bump_version.outputs.orig_version }}"
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
+          # If this is a beta branch, append 'beta'
+          if [[ "$BUMP_TYPE" == "beta" ]]; then
+            NEW_VERSION="${NEW_VERSION}beta"
+          fi
+          sed -i "s/version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
 
       - name: Commit Changelog and Version
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md pyproject.toml
-          git commit -m "Update CHANGELOG.md and pyproject.toml for version ${{ steps.calc_version.outputs.new_version }}"
-          git push origin "beta-release-v${{ steps.calc_version.outputs.new_version }}"
+          git commit -m "Update CHANGELOG.md and pyproject.toml for version ${{ steps.bump_version.outputs.new_version }}"
+          git push origin "beta-release-v${{ steps.bump_version.outputs.new_version }}"
   
       - name: push beta release branch
         run: |
-          NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
           BRANCH_NAME="beta-release-v$NEW_VERSION"
           git push origin "$BRANCH_NAME"
 
@@ -83,7 +156,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
+          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
           ORIG_VERSION="${{ steps.current_version.outputs.version }}"
           
           # Read the PR template and only replace the unique placeholder
@@ -95,23 +168,4 @@ jobs:
             --base main \
             --head "beta-release-v$NEW_VERSION" \
             --draft
-
-      - name: Release to Github
-        uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            dist/*.whl
-            dist/*.tar.gz
-          draft: ${{ contains(github.ref, 'beta') }}
-          prerelease: ${{ contains(github.ref, 'beta') }}
-          name: ${{ contains(github.ref, 'beta') && format('Beta Release {0}', github.ref_name) || github.ref_name }}
-          body: ${{ contains(github.ref, 'beta') && 'This is a beta release and is not production ready.' || '' }}
-
-      - name: Publish to TestPyPI
-        if: startsWith(github.ref, 'refs/tags/') && contains(github.ref, 'beta')
-        run: uv publish --repository-url https://test.pypi.org/legacy/
-
-      - name: Publish to PyPI
-        if: startsWith(github.ref, 'refs/tags/') && !contains(github.ref, 'beta')
-        run: uv publish
+            
