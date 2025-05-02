@@ -38,3 +38,9 @@ Additional documentation:
 
 
 
+
+## Release 0.3.12
+
+
+No new commits.
+

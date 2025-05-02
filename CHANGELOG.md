@@ -1,4 +1,8 @@
 # Changelog
+## 0.3.12 (Beta)
+
+No new commits.
+
 ## 0.3.11 (Beta)
 
 
