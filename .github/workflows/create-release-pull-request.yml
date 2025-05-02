@@ -109,21 +109,17 @@ jobs:
 
       - name: Update Changelog
         run: |
-          RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
-          # Get all commit messages since the last tag
+          NEW_VERSION="${{ steps.bump_beta.outputs.new_version }}"
           COMMITS=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s")
-          # If no commits, add a placeholder
           if [ -z "$COMMITS" ]; then
             COMMITS="No new commits."
           fi
           {
-            echo "## $RELEASE_VERSION"
+            echo "## $NEW_VERSION (Beta)"
             echo ""
             echo "$COMMITS"
             echo ""
           } > NEW_CHANGELOG.md
-
-          # Insert after the first line (# Changelog)
           awk 'NR==1{print; system("cat NEW_CHANGELOG.md"); next} 1' CHANGELOG.md > CHANGELOG.md.tmp
           mv CHANGELOG.md.tmp CHANGELOG.md
           rm NEW_CHANGELOG.md
