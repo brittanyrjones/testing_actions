@@ -143,16 +143,16 @@ jobs:
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           mkdir -p releasenotes/applink
-          awk "/^## $VERSION/ {flag=1; next} /^## / {flag=0} flag" CHANGELOG.md > "releasenotes/applink/v$VERSION.md"
-          echo "notes_file=releasenotes/applink/v$VERSION.md" >> $GITHUB_OUTPUT
+          awk "/^## $VERSION/ {flag=1; next} /^## / {flag=0} flag" CHANGELOG.md > "releasenotes/applink/v${VERSION}beta.md"
+          echo "notes_file=releasenotes/applink/v${VERSION}beta.md" >> $GITHUB_OUTPUT
         
       - name: Append release notes to releasenotes/README.md
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           mkdir -p releasenotes
-          echo -e "\n## Release $VERSION\n" >> releasenotes/README.md
-          cat "releasenotes/applink/v$VERSION.md" >> releasenotes/README.md
-          git add releasenotes/README.md "releasenotes/applink/v$VERSION.md"
+          echo -e "\n## Release ${VERSION}beta\n" >> releasenotes/README.md
+          cat "releasenotes/applink/v${VERSION}beta.md" >> releasenotes/README.md
+          git add releasenotes/README.md "releasenotes/applink/v${VERSION}beta.md"
         
       - name: Update pyproject.toml version to beta
         run: |
