@@ -120,7 +120,7 @@ jobs:
         run: |
           NEW_VERSION="${{ steps.bump_beta.outputs.new_version }}"
           # Get all commit messages since the last tag
-          COMMITS=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s")
+          COMMITS=$(git log --pretty=format:"- %s")
           # If no commits, add a placeholder
           if [ -z "$COMMITS" ]; then
             COMMITS="No new commits."

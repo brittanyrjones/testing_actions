@@ -109,13 +109,13 @@ jobs:
 
       - name: Update Changelog
         run: |
-          NEW_VERSION="${{ steps.bump_beta.outputs.new_version }}"
-          COMMITS=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s")
+          NEW_VERSION="${{ steps.release_version.outputs.release_version }}"
+          COMMITS=$(git log --pretty=format:"- %s")
           if [ -z "$COMMITS" ]; then
             COMMITS="No new commits."
           fi
           {
-            echo "## $NEW_VERSION (Beta)"
+            echo "## $NEW_VERSION"
             echo ""
             echo "$COMMITS"
             echo ""
