@@ -86,44 +86,20 @@ jobs:
         if: steps.check_beta.outputs.skip == 'false'
         id: current_version
         run: |
-          CURRENT_VERSION=$(grep -Po '(?<=version = ")[^"]+' pyproject.toml)
+          CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
+          echo "Extracted version: $CURRENT_VERSION"
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Bump version
-        if: steps.check_beta.outputs.skip == 'false'
-        id: bump_version
+      - name: Prepare release version
+        id: release_version
         run: |
-          BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
-          echo "Bump type: $BUMP_TYPE"
-          IFS='.' read -r -a version_parts <<< "${{ steps.current_version.outputs.version }}"
-          for part in "${version_parts[@]}"; do
-            if ! [[ $part =~ ^[0-9]+$ ]]; then
-              echo "Error: Version part '$part' is not a valid number"
-              exit 1
-            fi
-          done
-          ORIG_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
-          case "$BUMP_TYPE" in
-            major)
-              ((version_parts[0]++))
-              version_parts[1]=0
-              version_parts[2]=0
-              ;;
-            minor)
-              ((version_parts[1]++))
-              version_parts[2]=0
-              ;;
-            patch)
-              ((version_parts[2]++))
-              ;;
-          esac
-          NEW_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
-          if ! python -c "from packaging import version; assert version.parse('$NEW_VERSION') > version.parse('$ORIG_VERSION'), 'New version must be greater than current version'"; then
-            echo "Error: New version '$NEW_VERSION' is not greater than current version '$ORIG_VERSION'"
-            exit 1
-          fi
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "orig_version=$ORIG_VERSION" >> $GITHUB_OUTPUT
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+          # Remove 'beta', 'b1', or any pre-release suffix
+          RELEASE_VERSION=$(echo "$CURRENT_VERSION" | sed -E 's/(beta.*|b[0-9]+.*)$//')
+          # Remove trailing dot if present (e.g., 0.4.0.)
+          RELEASE_VERSION=$(echo "$RELEASE_VERSION" | sed 's/\.$//')
+          echo "Release version: $RELEASE_VERSION"
+          echo "release_version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
 
       - name: Configure Github Actions Bot user
         if: steps.check_beta.outputs.skip == 'false'
@@ -135,20 +111,19 @@ jobs:
         if: steps.check_beta.outputs.skip == 'false'
         id: set_branch
         run: |
-          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          NEW_VERSION="${{ steps.release_version.outputs.release_version }}"
           echo "branch_name=release-v$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Update version in pyproject.toml
         if: steps.check_beta.outputs.skip == 'false'
         run: |
-          ORIG_VERSION="${{ steps.bump_version.outputs.orig_version }}"
-          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
-          sed -i "s/version = \"$ORIG_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
+          RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
+          sed -i "s/^version = \".*\"/version = \"$RELEASE_VERSION\"/" pyproject.toml
 
       - name: Update CHANGELOG.md
         if: steps.check_beta.outputs.skip == 'false'
         run: |
-          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          NEW_VERSION="${{ steps.release_version.outputs.release_version }}"
           TITLE="$NEW_VERSION"
           
           {
@@ -165,7 +140,7 @@ jobs:
         if: steps.check_beta.outputs.skip == 'false'
         run: |
           git add pyproject.toml CHANGELOG.md
-          git commit -m "Release v${{ steps.bump_version.outputs.new_version }}"
+          git commit -m "Release v${{ steps.release_version.outputs.release_version }}"
           git push origin ${{ steps.set_branch.outputs.branch_name }}
 
       - name: Create PR on GitHub
@@ -173,8 +148,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
-          ORIG_VERSION="${{ steps.bump_version.outputs.orig_version }}"
+          NEW_VERSION="${{ steps.release_version.outputs.release_version }}"
+          ORIG_VERSION="${{ steps.release_version.outputs.release_version }}"
           
           # Read the PR template and only replace the unique placeholder
           PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE.md | sed "s/{{RELEASE_SUMMARY}}/Release version bump from v$ORIG_VERSION to v$NEW_VERSION/")
