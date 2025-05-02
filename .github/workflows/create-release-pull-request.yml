@@ -107,19 +107,27 @@ jobs:
           RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
           sed -i "s/^version = \".*\"/version = \"$RELEASE_VERSION\"/" pyproject.toml
 
-      - name: Update CHANGELOG.md
-        if: steps.check_beta.outputs.skip == 'false'
+      - name: Update Changelog
         run: |
           RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
+          # Get all commit messages since the last tag
+          COMMITS=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"- %s")
+          # If no commits, add a placeholder
+          if [ -z "$COMMITS" ]; then
+            COMMITS="No new commits."
+          fi
           {
             echo "## $RELEASE_VERSION"
             echo ""
-            git log $(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD --pretty=format:"- %s"
+            echo "$COMMITS"
             echo ""
           } > NEW_CHANGELOG.md
+
+          # Insert after the first line (# Changelog)
           awk 'NR==1{print; system("cat NEW_CHANGELOG.md"); next} 1' CHANGELOG.md > CHANGELOG.md.tmp
           mv CHANGELOG.md.tmp CHANGELOG.md
           rm NEW_CHANGELOG.md
+          git add CHANGELOG.md
 
       - name: Configure Github Actions Bot user
         if: steps.check_beta.outputs.skip == 'false'
