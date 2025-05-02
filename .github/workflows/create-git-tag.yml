@@ -24,11 +24,16 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Create Tag and Push
-        id: set_tag
+      - name: Extract version from pyproject.toml
+        id: extract_version
         run: |
-          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'release-v.*' | sed 's/release-v//')
-          echo "Tagging version: $VERSION"
+          VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
+          echo "Extracted version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Tag and Push
+        run: |
+          VERSION="${{ steps.extract_version.outputs.version }}"
           git tag -a "v$VERSION" -m "Release v$VERSION"
           git push origin "v$VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -36,7 +41,7 @@ jobs:
       - name: Draft GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v${{ steps.set_tag.outputs.version }}"
+          tag_name: "v${{ steps.extract_version.outputs.version }}"
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
