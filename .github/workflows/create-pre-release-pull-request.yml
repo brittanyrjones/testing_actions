@@ -167,10 +167,7 @@ jobs:
           ORIG_VERSION="${{ steps.bump_version.outputs.orig_version }}"
           NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
           BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
-          # If this is a beta branch, append 'beta'
-          if [[ "$BUMP_TYPE" == "beta" ]]; then
-            NEW_VERSION="${NEW_VERSION}beta"
-          fi
+          NEW_VERSION="${NEW_VERSION}beta"
           sed -i "s/version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
 
       - name: Commit Changelog and Version
@@ -191,7 +188,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
+          NEW_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           ORIG_VERSION="${{ steps.current_version.outputs.version }}"
           
           # Read the PR template and only replace the unique placeholder
@@ -203,13 +200,3 @@ jobs:
             --base main \
             --head "beta-release-v$NEW_VERSION" \
             --draft
-
-      - name: Validate beta branch name
-        if: steps.check_beta.outputs.skip == 'false' && steps.check_beta.outputs.clean_branch != 'manual'
-        run: |
-          CLEAN_BRANCH="${{ steps.check_beta.outputs.clean_branch }}"
-          if [[ ! "$CLEAN_BRANCH" =~ ^beta-release-v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            echo "Error: Beta branch name must be in the format beta-release-vX.Y.Z"
-            exit 1
-          fi
-            
