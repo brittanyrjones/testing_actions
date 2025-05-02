@@ -87,7 +87,6 @@ jobs:
         id: current_version
         run: |
           CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          echo "Extracted version: $CURRENT_VERSION"
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Prepare release version
@@ -98,10 +97,15 @@ jobs:
           CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
           # Remove 'beta', 'b1', or any pre-release suffix
           RELEASE_VERSION=$(echo "$CURRENT_VERSION" | sed -E 's/(beta.*|b[0-9]+.*)$//')
-          # Remove trailing dot if present (e.g., 0.4.0.)
+          # Remove trailing dot if present (e.g., 0.3.5.)
           RELEASE_VERSION=$(echo "$RELEASE_VERSION" | sed 's/\.$//')
-          echo "Release version: $RELEASE_VERSION"
           echo "release_version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update pyproject.toml version
+        if: steps.check_beta.outputs.skip == 'false'
+        run: |
+          RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
+          sed -i "s/^version = \".*\"/version = \"$RELEASE_VERSION\"/" pyproject.toml
 
       - name: Configure Github Actions Bot user
         if: steps.check_beta.outputs.skip == 'false'
@@ -109,30 +113,14 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version and update pyproject.toml to beta
+      - name: Set branch name
         if: steps.check_beta.outputs.skip == 'false'
-
-        id: bump_beta
-        run: |
-          CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          BASE_VERSION=$(echo "$CURRENT_VERSION" | sed -E 's/(beta.*|b[0-9]+.*)$//')
-          BASE_VERSION=$(echo "$BASE_VERSION" | sed 's/\.$//')
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
-          PATCH=${PATCH:-0}
-          PATCH=$((PATCH + 1))
-          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}beta"
-          sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set branch name with new beta version
-        if: steps.check_beta.outputs.skip == 'false'
-
         id: set_branch
         run: |
-          NEW_VERSION="${{ steps.bump_beta.outputs.new_version }}"
-          echo "branch_name=beta-release-v$NEW_VERSION" >> $GITHUB_OUTPUT
+          RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
+          echo "branch_name=release-v$RELEASE_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create and checkout beta branch
+      - name: Create and checkout release branch
         if: steps.check_beta.outputs.skip == 'false'
         run: |
           git checkout -b "${{ steps.set_branch.outputs.branch_name }}"
@@ -142,7 +130,7 @@ jobs:
 
         run: |
           git add pyproject.toml CHANGELOG.md
-          git commit -m "Beta release v${{ steps.bump_beta.outputs.new_version }}" || echo "No changes to commit"
+          git commit -m "Release v${{ steps.release_version.outputs.release_version }}" || echo "No changes to commit"
           git push origin "${{ steps.set_branch.outputs.branch_name }}"
 
       - name: Create PR on GitHub
@@ -150,14 +138,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          NEW_VERSION="${{ steps.release_version.outputs.release_version }}"
-          ORIG_VERSION="${{ steps.release_version.outputs.release_version }}"
+          RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
           
           # Read the PR template and only replace the unique placeholder
-          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE.md | sed "s/{{RELEASE_SUMMARY}}/Release version bump from v$ORIG_VERSION to v$NEW_VERSION/")
+          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE.md | sed "s/{{RELEASE_SUMMARY}}/Release version bump from v$RELEASE_VERSION/")
           
           gh pr create \
-            --title "Release v$NEW_VERSION" \
+            --title "Release v$RELEASE_VERSION" \
             --body "$PR_BODY" \
             --base main \
             --head "${{ steps.set_branch.outputs.branch_name }}" \
