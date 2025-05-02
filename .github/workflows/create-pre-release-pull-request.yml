@@ -85,14 +85,18 @@ jobs:
         run: |
           BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
           echo "Bump type: $BUMP_TYPE"
-          IFS='.' read -r -a version_parts <<< "${{ steps.current_version.outputs.version }}"
+          CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
+          # Extract numeric version and suffix (e.g., 0.4.0 and beta)
+          NUMERIC_VERSION=$(echo "$CURRENT_VERSION" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
+          SUFFIX=$(echo "$CURRENT_VERSION" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+//')
+          IFS='.' read -r -a version_parts <<< "$NUMERIC_VERSION"
           for part in "${version_parts[@]}"; do
             if ! [[ $part =~ ^[0-9]+$ ]]; then
               echo "Error: Version part '$part' is not a valid number"
               exit 1
             fi
           done
-          ORIG_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
+          ORIG_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}$SUFFIX"
           case "$BUMP_TYPE" in
             major)
               ((version_parts[0]++))
@@ -107,9 +111,9 @@ jobs:
               ((version_parts[2]++))
               ;;
           esac
-          NEW_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
-          if ! python -c "from packaging import version; assert version.parse('$NEW_VERSION') > version.parse('$ORIG_VERSION'), 'New version must be greater than current version'"; then
-            echo "Error: New version '$NEW_VERSION' is not greater than current version '$ORIG_VERSION'"
+          NEW_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}$SUFFIX"
+          if ! python -c "from packaging import version; assert version.parse('$NEW_VERSION') > version.parse('$CURRENT_VERSION'), 'New version must be greater than current version'"; then
+            echo "Error: New version '$NEW_VERSION' is not greater than current version '$CURRENT_VERSION'"
             exit 1
           fi
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
