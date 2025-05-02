@@ -117,8 +117,14 @@ jobs:
       - name: Update version in pyproject.toml
         if: steps.check_beta.outputs.skip == 'false'
         run: |
-          RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
-          sed -i "s/^version = \".*\"/version = \"$RELEASE_VERSION\"/" pyproject.toml
+          CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
+          # Remove any existing 'beta' or pre-release suffix
+          BASE_VERSION=$(echo "$CURRENT_VERSION" | sed -E 's/(beta.*|b[0-9]+.*)$//')
+          # Remove trailing dot if present
+          BASE_VERSION=$(echo "$BASE_VERSION" | sed 's/\.$//')
+          NEW_VERSION="${BASE_VERSION}beta"
+          sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+          echo "Updated version to $NEW_VERSION in pyproject.toml"
 
       - name: Update CHANGELOG.md
         if: steps.check_beta.outputs.skip == 'false'
