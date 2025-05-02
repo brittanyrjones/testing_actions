@@ -31,15 +31,17 @@ jobs:
           ref: main
 
       - name: Check if merge is from beta branch
+        id: check_beta
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%B)
           echo "Commit message: $COMMIT_MSG"
           # Extract source branch from commit message
           SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
           echo "Source branch: $SRC_BRANCH"
-          if [[ ! "$SRC_BRANCH" =~ ^beta ]]; then
-            echo "Not a merge from a beta branch. Skipping workflow."
-            exit 1
+          if [[ -z "$SRC_BRANCH" ]] || [[ ! "$SRC_BRANCH" =~ ^beta ]]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Set up Python
