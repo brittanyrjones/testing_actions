@@ -162,6 +162,11 @@ jobs:
           mv CHANGELOG.md.tmp CHANGELOG.md
           rm NEW_CHANGELOG.md
 
+      - name: Configure Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Update pyproject.toml version to beta
         run: |
           ORIG_VERSION="${{ steps.bump_version.outputs.orig_version }}"
