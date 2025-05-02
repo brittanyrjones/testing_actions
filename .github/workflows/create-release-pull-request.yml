@@ -41,15 +41,6 @@ jobs:
             echo "is_beta=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Validate beta branch name
-        if: steps.check_beta.outputs.skip == 'false'
-        run: |
-          CLEAN_BRANCH="${{ steps.check_beta.outputs.clean_branch }}"
-          if [[ ! "$CLEAN_BRANCH" =~ ^beta-release-v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            echo "Error: Beta branch name must be in the format beta-release-vX.Y.Z"
-            exit 1
-          fi
-
       - name: Extract bump type from source branch or input
         if: steps.check_beta.outputs.skip == 'false'
         id: bump_type
@@ -145,7 +136,7 @@ jobs:
         id: set_branch
         run: |
           NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
-          echo "branch_name=beta-release-v$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "branch_name=release-v$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Update version in pyproject.toml
         if: steps.check_beta.outputs.skip == 'false'
@@ -158,12 +149,8 @@ jobs:
         if: steps.check_beta.outputs.skip == 'false'
         run: |
           NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
-          IS_BETA="${{ steps.check_beta.outputs.is_beta }}"
-          if [[ "$IS_BETA" == "true" ]]; then
-            TITLE="$NEW_VERSION (Beta)"
-          else
-            TITLE="$NEW_VERSION"
-          fi
+          TITLE="$NEW_VERSION"
+          
           {
             echo "## $TITLE"
             echo ""
