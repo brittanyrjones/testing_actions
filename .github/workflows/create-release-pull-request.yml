@@ -137,6 +137,7 @@ jobs:
           rm NEW_CHANGELOG.md
 
       - name: Create and checkout release branch
+        if: steps.check_beta.outputs.skip == 'false'
         run: |
           git checkout -b "${{ steps.set_branch.outputs.branch_name }}"
 
