@@ -1,4 +1,7 @@
 # Changelog
+## 0.3.1 (Beta)
+
+
 ## 0.3.0 (Beta)
 
 
