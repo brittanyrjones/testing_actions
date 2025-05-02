@@ -136,12 +136,13 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "orig_version=$ORIG_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Set branch name
+      - name: Set branch name with beta version
         id: set_branch
         run: |
-          echo "branch_name=beta-release-v${{ steps.bump_version.outputs.new_version }}" >> $GITHUB_OUTPUT
+          BETA_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
+          echo "branch_name=beta-release-v$BETA_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create and checkout beta release branch
+      - name: Create and checkout beta branch
         run: |
           git checkout -b "${{ steps.set_branch.outputs.branch_name }}"
 
@@ -161,42 +162,29 @@ jobs:
           mv CHANGELOG.md.tmp CHANGELOG.md
           rm NEW_CHANGELOG.md
 
-      - name: Update pyproject.toml version
-        if: steps.check_beta.outputs.skip == 'false'
+      - name: Update pyproject.toml version to beta
         run: |
           ORIG_VERSION="${{ steps.bump_version.outputs.orig_version }}"
           NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
           BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
           NEW_VERSION="${NEW_VERSION}beta"
           sed -i "s/version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
+          git add pyproject.toml
+          git commit -m "Set version to $NEW_VERSION for beta pre-release"
 
-      - name: Commit Changelog and Version
+      - name: Push beta release branch
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.md pyproject.toml
-          git commit -m "Update CHANGELOG.md and pyproject.toml for version ${{ steps.bump_version.outputs.new_version }}"
-          git push origin "beta-release-v${{ steps.bump_version.outputs.new_version }}"
-  
-      - name: push beta release branch
-        run: |
-          NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
-          BRANCH_NAME="beta-release-v$NEW_VERSION"
-          git push origin "$BRANCH_NAME"
+          git push origin "${{ steps.set_branch.outputs.branch_name }}"
 
       - name: Create PR on GitHub
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           NEW_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          ORIG_VERSION="${{ steps.current_version.outputs.version }}"
-          
-          # Read the PR template and only replace the unique placeholder
-          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE.md | sed "s/{{RELEASE_SUMMARY}}/Release version bump from v$ORIG_VERSION to v$NEW_VERSION/")
-          
+          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE.md | sed "s/{{RELEASE_SUMMARY}}/Beta release v$NEW_VERSION/")
           gh pr create \
-            --title "Release v$NEW_VERSION" \
+            --title "Beta Release v$NEW_VERSION" \
             --body "$PR_BODY" \
             --base main \
-            --head "beta-release-v$NEW_VERSION" \
+            --head "${{ steps.set_branch.outputs.branch_name }}" \
             --draft
