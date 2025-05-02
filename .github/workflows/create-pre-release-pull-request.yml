@@ -145,7 +145,11 @@ jobs:
       - name: Create and checkout beta branch
         run: |
           git checkout -b "${{ steps.set_branch.outputs.branch_name }}"
-
+      - name: Configure Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
       - name: Update Changelog
         run: |
           NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
@@ -161,11 +165,7 @@ jobs:
           awk 'NR==1{print; system("cat NEW_CHANGELOG.md"); next} 1' CHANGELOG.md > CHANGELOG.md.tmp
           mv CHANGELOG.md.tmp CHANGELOG.md
           rm NEW_CHANGELOG.md
-
-      - name: Configure Git user
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
 
       - name: Update pyproject.toml version to beta
         run: |
@@ -175,10 +175,10 @@ jobs:
           NEW_VERSION="${NEW_VERSION}beta"
           sed -i "s/version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
           git add pyproject.toml
-          git commit -m "Set version to $NEW_VERSION for beta pre-release"
 
-      - name: Push beta release branch
+      - name: Commit and push changes
         run: |
+          git commit -m "Beta release v$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)"
           git push origin "${{ steps.set_branch.outputs.branch_name }}"
 
       - name: Create PR on GitHub
