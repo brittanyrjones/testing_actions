@@ -33,6 +33,15 @@ jobs:
           NEW_VERSION="${version_parts[0]}.${version_parts[1]}.${version_parts[2]}"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           
+      - name: Set branch name
+        id: set_branch
+        run: |
+          echo "branch_name=beta-release-v${{ steps.calc_version.outputs.new_version }}" >> $GITHUB_OUTPUT
+
+      - name: Create and checkout beta release branch
+        run: |
+          git checkout -b "${{ steps.set_branch.outputs.branch_name }}"
+
       - name: Update Changelog
         run: |
           NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
@@ -45,12 +54,6 @@ jobs:
           cat CHANGELOG.md >> CHANGELOG.md.tmp
           mv CHANGELOG.md.tmp CHANGELOG.md
 
-      - name: Create and checkout beta release branch
-        run: |
-          NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
-          BRANCH_NAME="beta-release-v$NEW_VERSION"
-          git checkout -b "$BRANCH_NAME"
-            
       - name: Update pyproject.toml version
         run: |
           NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
@@ -68,6 +71,8 @@ jobs:
   
       - name: push beta release branch
         run: |
+          NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
+          BRANCH_NAME="beta-release-v$NEW_VERSION"
           git push origin "$BRANCH_NAME"
 
       - name: Create PR on GitHub
