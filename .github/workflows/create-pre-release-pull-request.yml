@@ -93,9 +93,8 @@ jobs:
         id: bump_beta
         run: |
           CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          # Remove any existing 'beta' or 'betabeta' or 'b1', etc. at the end
-          BASE_VERSION=$(echo "$CURRENT_VERSION" | sed -E 's/(beta|b[0-9]+)+$//')
-          BASE_VERSION=$(echo "$BASE_VERSION" | sed 's/\.$//')
+          # Extract only the numeric part (e.g., 0.3.5) from the version string
+          BASE_VERSION=$(echo "$CURRENT_VERSION" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
           IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
           PATCH=${PATCH:-0}
           PATCH=$((PATCH + 1))
