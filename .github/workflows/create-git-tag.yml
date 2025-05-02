@@ -27,7 +27,7 @@ jobs:
       - name: Create Tag and Push
         id: set_tag
         run: |
-          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | sed 's/.*release-v//')
+          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | grep -oE 'release-v.*' | sed 's/release-v//')
           git tag -a "v$VERSION" -m "Release v$VERSION"
           git push origin "v$VERSION"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
