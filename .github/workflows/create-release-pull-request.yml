@@ -140,18 +140,24 @@ jobs:
           git checkout -b "${{ steps.set_branch.outputs.branch_name }}"
 
       - name: Add applink file for this release
+        if: steps.check_beta.outputs.skip == 'false'
+
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           echo "Release $VERSION" > "applink/v$VERSION"
           git add "applink/v$VERSION"
 
       - name: Append release info to README.md
+        if: steps.check_beta.outputs.skip == 'false'
+
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           echo "- Released $VERSION" >> README.md
           git add README.md
 
       - name: Extract release notes for this version
+        if: steps.check_beta.outputs.skip == 'false'
+
         id: release_notes
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
@@ -160,6 +166,8 @@ jobs:
           echo "notes_file=releasenotes/applink/v$VERSION.md" >> $GITHUB_OUTPUT
 
       - name: Append release notes to releasenotes/README.md
+        if: steps.check_beta.outputs.skip == 'false'
+
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           mkdir -p releasenotes
