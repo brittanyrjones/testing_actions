@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.head.ref, 'release-v')
 
     steps:
       - name: Checkout code
@@ -24,7 +25,17 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Create Tag and Push
+        id: set_tag
         run: |
-          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | sed 's/release-//')
-          git tag -a "$VERSION" -m "Release $VERSION"
-          git push origin "$VERSION"
+          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | sed 's/.*release-v//')
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ steps.set_tag.outputs.version }}"
+          draft: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
