@@ -98,7 +98,7 @@ jobs:
           IFS='.' read -r MAJOR MINOR PATCH <<< "$BASE_VERSION"
           PATCH=${PATCH:-0}
           PATCH=$((PATCH + 1))
-          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}beta"
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
           sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
