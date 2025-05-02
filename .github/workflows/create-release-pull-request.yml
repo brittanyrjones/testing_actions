@@ -41,6 +41,7 @@ jobs:
           fi
 
       - name: Set up Python
+        if: steps.check_beta.outputs.skip == 'false'
         uses: actions/setup-python@v3
 
       - name: Install uv
@@ -50,15 +51,22 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Install the project
+        if: steps.check_beta.outputs.skip == 'false'
+
         run: uv sync --all-extras --dev
 
       - name: Install tox
+        if: steps.check_beta.outputs.skip == 'false'
+
         run: pip install tox
 
       - name: Run tox
+        if: steps.check_beta.outputs.skip == 'false'
+
         run: tox
 
       - name: Get current version
+        if: steps.check_beta.outputs.skip == 'false'
         id: current_version
         run: |
           CURRENT_VERSION=$(grep -Po '(?<=version = ")[^"]+' pyproject.toml)
@@ -72,6 +80,7 @@ jobs:
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Bump version
+        if: steps.check_beta.outputs.skip == 'false'
         id: bump_version
         run: |
           # Determine if this is a beta release (any branch other than main)
@@ -124,11 +133,13 @@ jobs:
           echo "orig_version=$ORIG_VERSION" >> $GITHUB_OUTPUT
 
       - name: Configure Github Actions Bot user
+        if: steps.check_beta.outputs.skip == 'false'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Create release branch
+        if: steps.check_beta.outputs.skip == 'false'
         id: create_branch
         run: |
           NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
@@ -145,12 +156,14 @@ jobs:
           echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
 
       - name: Update version in pyproject.toml
+        if: steps.check_beta.outputs.skip == 'false'
         run: |
           ORIG_VERSION="${{ steps.bump_version.outputs.orig_version }}"
           NEW_VERSION="${{ steps.bump_version.outputs.new_version }}"
           sed -i "s/version = \"$ORIG_VERSION\"/version = \"$NEW_VERSION\"/" pyproject.toml
 
       - name: Update CHANGELOG.md
+        if: steps.check_beta.outputs.skip == 'false'
         run: |
           echo "## $NEW_VERSION" >> CHANGELOG.md.tmp
           echo "" >> CHANGELOG.md.tmp
@@ -160,12 +173,14 @@ jobs:
           mv CHANGELOG.md.tmp CHANGELOG.md
 
       - name: Commit and push changes
+        if: steps.check_beta.outputs.skip == 'false'
         run: |
           git add pyproject.toml CHANGELOG.md
           git commit -m "Release v${{ steps.bump_version.outputs.new_version }}"
           git push origin ${{ steps.create_branch.outputs.branch_name }}
 
       - name: Create PR on GitHub
+        if: steps.check_beta.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
