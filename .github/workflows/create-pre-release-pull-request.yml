@@ -71,7 +71,12 @@ jobs:
         if: steps.check_beta.outputs.skip == 'false'
         id: current_version
         run: |
-          CURRENT_VERSION=$(grep -Po '(?<=version = ")[^"]+' pyproject.toml)
+          CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
+          echo "Extracted version: $CURRENT_VERSION"
+          if [[ -z "$CURRENT_VERSION" ]]; then
+            echo "Error: Could not extract version from pyproject.toml"
+            exit 1
+          fi
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Bump version
