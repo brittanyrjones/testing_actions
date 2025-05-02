@@ -1,4 +1,4 @@
-name: Create Release Branch
+name: Create Release Pull Request
 
 on:
   # Allow manual trigger, e.g. for testing. This can be changed to a cron job in the future, or some other custom trigger.
@@ -18,17 +18,11 @@ on:
       - main
 
 jobs:
-  beta-and-create-release-branch:
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        python-version: ["3.10"]
-
+  create-release:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout main branch
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: main
 
       - name: Check if merge is from beta branch
         id: check_beta
@@ -39,7 +33,9 @@ jobs:
           SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
           echo "Source branch: $SRC_BRANCH"
           if [[ -z "$SRC_BRANCH" ]] || [[ ! "$SRC_BRANCH" =~ ^beta ]]; then
+            echo "Not a merge from a beta branch. Skipping workflow."
             echo "skip=true" >> $GITHUB_OUTPUT
+            exit 0
           else
             echo "skip=false" >> $GITHUB_OUTPUT
           fi
