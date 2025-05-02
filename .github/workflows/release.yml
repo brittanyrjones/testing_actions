@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'  # Triggers on any tag starting with 'v'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Build package
+        run: |
+          pip install build
+          python -m build
+
+      - name: Release to Github
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+          draft: ${{ contains(github.ref, 'beta') }}
+          prerelease: ${{ contains(github.ref, 'beta') }}
+          name: ${{ contains(github.ref, 'beta') && format('Beta Release {0}', github.ref_name) || github.ref_name }}
+          body: ${{ contains(github.ref, 'beta') && 'This is a beta release and is not production ready.' || '' }}
+
+      - name: Publish to TestPyPI
+        if: contains(github.ref, 'beta')
+        run: |
+          pip install uv
+          uv publish --repository-url https://test.pypi.org/legacy/
+
+      - name: Publish to PyPI
+        if: ${{ !contains(github.ref, 'beta') }}
+        run: |
+          pip install uv
+          uv publish
