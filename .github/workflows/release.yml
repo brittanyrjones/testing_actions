@@ -30,10 +30,13 @@ jobs:
           ls -l dist/
 
       - name: Create .pypirc
+        env:
+          PYPIRC_PATH: ${{ github.workspace }}/.pypirc
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          echo "[pypi]" > $PYPIRC_PATH
-          echo "  username = __token__" >> $PYPIRC_PATH
-          echo "  password = $TWINE_PASSWORD" >> $PYPIRC_PATH
+          echo "[pypi]" > "$PYPIRC_PATH"
+          echo "  username = __token__" >> "$PYPIRC_PATH"
+          echo "  password = $TWINE_PASSWORD" >> "$PYPIRC_PATH"
 
       - name: Publish to TestPyPI
         if: contains(github.event.inputs.tag_name || github.ref_name, 'beta')
