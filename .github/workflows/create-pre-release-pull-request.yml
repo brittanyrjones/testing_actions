@@ -141,53 +141,18 @@ jobs:
       - name: Extract release notes for this version
         id: release_notes
         run: |
-          VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1 | sed -E 's/(beta)?$/beta/')
+          VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           mkdir -p releasenotes/applink
-          cat > "releasenotes/applink/v${VERSION}.md" <<EOF
-# Applink Python SDK Release Notes
-
-Here are the new and changed features in recent updates of the Applink Python SDK
-
-We publish the latest stable and beta versions of the Applink Python SDK as needed. Beta releases contain changes that are candidates for the next stable version and are intended for testing and feedback.
-
-Run \`pip show heroku-applink\` to display the version of the Applink Python SDK installed on your system.
-
-To upgrade to the latest stable version, run:
-\`\`\`bash
-pip install --upgrade heroku-applink
-\`\`\`
-
-To install the latest beta version, run:
-\`\`\`bash
-pip install --upgrade --pre heroku-applink
-\`\`\`
-If you want to install a specific version, use:
-\`\`\`bash
-pip install heroku-applink==<version>
-\`\`\`
-
-If you use autocomplete in your shell, you may need to refresh your environment after upgrading to ensure new commands are available.
-
-Looking for previous release notes?  
-See the [v0.1.x release notes](./releasenotes/v0.1.x.md) or the [CHANGELOG.md](./CHANGELOG.md) for a complete history.
-
-For documentation, usage examples, and more, see the [README](./README.md) and the [docs/](./docs/) directory.
-
-If you encounter issues or have feature requests, please [open an issue](https://github.com/heroku/heroku-applink-python/issues).
-
----
-
-EOF
-          awk "/^## $VERSION/ {flag=1; next} /^## / {flag=0} flag" CHANGELOG.md >> "releasenotes/applink/v${VERSION}.md"
-          echo "notes_file=releasenotes/applink/v${VERSION}.md" >> $GITHUB_OUTPUT
+          awk "/^## $VERSION/ {flag=1; next} /^## / {flag=0} flag" CHANGELOG.md > "releasenotes/applink/v${VERSION}beta.md"
+          echo "notes_file=releasenotes/applink/v${VERSION}beta.md" >> $GITHUB_OUTPUT
         
       - name: Append release notes to releasenotes/README.md
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           mkdir -p releasenotes
           echo -e "\n## Release ${VERSION}beta\n" >> releasenotes/README.md
-          cat "releasenotes/applink/v${VERSION}.md" >> releasenotes/README.md
-          git add releasenotes/README.md "releasenotes/applink/v${VERSION}.md"
+          cat "releasenotes/applink/v${VERSION}beta.md" >> releasenotes/README.md
+          git add releasenotes/README.md "releasenotes/applink/v${VERSION}beta.md"
         
       - name: Update pyproject.toml version to beta
         run: |
@@ -215,4 +180,3 @@ EOF
             --base main \
             --head "${{ steps.set_branch.outputs.branch_name }}" \
             --draft
-

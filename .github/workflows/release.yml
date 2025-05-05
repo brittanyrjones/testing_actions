@@ -2,9 +2,13 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag to release'
+        required: false
   push:
     tags:
-      - 'v*'  # Triggers on any tag starting with 'v'
+      - 'v*'
 
 jobs:
   release:
@@ -22,7 +26,14 @@ jobs:
         run: |
           pip install build
           python -m build
-
+      - name: Set tag name
+        id: set_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG_NAME=${{ github.event.inputs.tag_name }}" >> $GITHUB_ENV
+          else
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          fi
       - name: Release to Github
         if: startsWith(github.ref, 'refs/tags/')
 
