@@ -1,6 +1,9 @@
 name: Create beta Release Branch
 
 on:
+  push:
+    branches:
+      - 'beta-release-v*'
   workflow_call:
   workflow_dispatch:
     inputs:
@@ -55,16 +58,14 @@ jobs:
       - name: Extract bump type from source branch or input
         id: bump_type
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "bump_type=${{ github.event.inputs.bump_type }}" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.bump_type }}" ]; then
+            BUMP_TYPE="${{ github.event.inputs.bump_type }}"
           else
-            COMMIT_MSG=$(git log -1 --pretty=%B)
-            SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
-            CLEAN_BRANCH=$(basename "$SRC_BRANCH")
-            BUMP_TYPE=$(echo "$CLEAN_BRANCH" | grep -oE '(patch|minor|major)' || echo "patch")
-            echo "Bump type: $BUMP_TYPE"
-            echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+            BUMP_TYPE=$(echo "$BRANCH_NAME" | grep -oE '(patch|minor|major)' || echo "patch")
           fi
+          echo "Bump type: $BUMP_TYPE"
+          echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
 
       - name: Get current version
         id: current_version
