@@ -30,13 +30,10 @@ jobs:
           ls -l dist/
 
       - name: Create .pypirc
-        env:
-          PYPIRC_PATH: ${{ github.workspace }}/.pypirc
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          echo "[pypi]" > "$PYPIRC_PATH"
-          echo "  username = __token__" >> "$PYPIRC_PATH"
-          echo "  password = $TWINE_PASSWORD" >> "$PYPIRC_PATH"
+          echo "[pypi]" > ~/.pypirc
+          echo "  username = __token__" >> ~/.pypirc
+          echo "  password = ${{ secrets.PYPI_API_TOKEN }}" >> ~/.pypirc
 
       - name: Publish to TestPyPI
         if: contains(github.event.inputs.tag_name || github.ref_name, 'beta')
@@ -47,10 +44,7 @@ jobs:
 
       - name: Publish to PyPI
         if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
-        env:
-          PYPIRC_PATH: ${{ github.workspace }}/.pypirc
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           pip install uv
-          uv publish dist/* -- --config-file $PYPIRC_PATH
+          uv publish dist/* -- --config-file ~/.pypirc
 
