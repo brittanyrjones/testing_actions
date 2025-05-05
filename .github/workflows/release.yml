@@ -24,6 +24,12 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
+      - name: Show working directory and dist contents
+        run: |
+          pwd
+          ls -l
+          ls -l dist/
+
       - name: Build the artifact in dist/
         run: |
           uv build
