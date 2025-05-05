@@ -80,3 +80,12 @@ Additional documentation:
 
 - tesitng
 
+
+## Release 0.3.18
+
+
+- Merge pull request #49 from brittanyrjones/beta-release-v0.3.18
+
+
+- tesitng
+
