@@ -1,46 +1,41 @@
 name: Manual Release
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag_name:
         description: 'Tag to release'
         required: true
-
 jobs:
-  release:
+  pypi-publish:
+    name: Upload release to PyPI
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.inputs.tag_name }}
-
       - name: Set up Python
         uses: actions/setup-python@v5
-
       - name: Install uv
         uses: astral-sh/setup-uv@v5
-
       - name: Install the project
         run: uv sync --all-extras --dev
-
       - name: Build the artifact in dist/
         run: |
           uv build
           ls -l dist/
 
-      - name: Create .pypirc
-        run: |
-          echo "[pypi]" > ~/.pypirc
-          echo "  username = __token__" >> ~/.pypirc
-          echo "  password = ${{ secrets.PYPI_API_TOKEN }}" >> ~/.pypirc
-
-      - name: Publish to TestPyPI
+      - name: Publish to TestPyPi
         if: contains(github.event.inputs.tag_name || github.ref_name, 'beta')
-        run: |
-          pip install uv
-          ls -l dist/
-          uv publish dist/* -- --repository-url https://test.pypi.org/legacy/
+
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
 
       - name: Publish to PyPI
         if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
@@ -48,4 +43,4 @@ jobs:
 
         with:
           repository-url: https://test.pypi.org/legacy/
-
+  
