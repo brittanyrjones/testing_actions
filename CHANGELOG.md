@@ -1,4 +1,8 @@
 # Changelog
+## 0.3.21
+
+- Merge pull request #55 from brittanyrjones/beta-release-v0.3.21
+
 ## 0.3.21 (Beta)
 
 - testing
