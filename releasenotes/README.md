@@ -50,3 +50,12 @@ Additional documentation:
 
 - testing
 
+
+## Release 0.3.13
+
+
+- Merge pull request #38 from brittanyrjones/beta-release-v0.3.13
+
+
+- testing
+
