@@ -148,8 +148,8 @@ jobs:
 
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          echo "Release $VERSION" > "applink/v$VERSION"
-          git add "applink/v$VERSION"
+          echo "Release $VERSION" > "releasenotes/applink/v$VERSION"
+          git add "releasenotes/applink/v$VERSION"
 
       - name: Append release info to README.md
         if: steps.check_beta.outputs.skip == 'false'
@@ -184,7 +184,7 @@ jobs:
         if: steps.check_beta.outputs.skip == 'false'
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          git add pyproject.toml CHANGELOG.md README.md "applink/v$VERSION" releasenotes/README.md "releasenotes/applink/v$VERSION.md"
+          git add pyproject.toml CHANGELOG.md README.md "releasenotes/applink/v$VERSION" releasenotes/README.md "releasenotes/applink/v$VERSION.md"
           git commit -m "Release v$VERSION: update pyproject, changelog, applink, and releasenotes" || echo "No changes to commit"
           git push origin HEAD
 
