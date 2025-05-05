@@ -8,6 +8,22 @@ on:
         required: true
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+      - name: Build package
+        run: |
+          pip install build
+          python -m build
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
   release:
     runs-on: ubuntu-latest
     steps:
@@ -26,6 +42,12 @@ jobs:
           pip install build
           python -m build
 
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
       - name: Release Draft to Github
         uses: softprops/action-gh-release@v2
         with:
@@ -38,14 +60,24 @@ jobs:
           name: ${{ contains(github.event.inputs.tag_name, 'beta') && format('{0}', github.event.inputs.tag_name) || github.event.inputs.tag_name }}
           body: ${{ contains(github.event.inputs.tag_name, 'beta') && 'This is a beta release and is not production ready.' || '' }}
 
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
       - name: Publish to TestPyPI
-        if: contains(github.event.inputs.tag_name, 'beta')
+        if: ${{ contains(github.event.inputs.tag_name, 'beta') }}
         run: |
           pip install uv
           uv publish -- --repository-url https://test.pypi.org/legacy/
-
       - name: Publish to PyPI
         if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
         run: |
           pip install uv
           uv publish
+  
