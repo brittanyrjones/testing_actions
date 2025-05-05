@@ -12,7 +12,10 @@ jobs:
   pypi-publish:
     name: Upload release to PyPI
     runs-on: ubuntu-latest
-    environment: testpypi
+    environment: 
+      name: testpypi
+      url: https://test.pypi.org/project/bjones-testing-actions
+
     permissions:
       id-token: write
     steps:
