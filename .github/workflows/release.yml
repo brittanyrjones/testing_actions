@@ -32,6 +32,12 @@ jobs:
           uv build
           ls -l dist/
 
+      - name: Print working directory and dist contents
+        run: |
+          pwd
+          ls -l
+          ls -l dist/
+
       - name: Publish to TestPyPI
         if: contains(github.event.inputs.tag_name, 'beta')
         run: |
