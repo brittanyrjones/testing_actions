@@ -29,19 +29,18 @@ jobs:
           uv build
           ls -l dist/
 
+      - name: Create .pypirc
+        run: |
+          echo "[pypi]" > $PYPIRC_PATH
+          echo "  username = __token__" >> $PYPIRC_PATH
+          echo "  password = $TWINE_PASSWORD" >> $PYPIRC_PATH
+
       - name: Publish to TestPyPI
         if: contains(github.event.inputs.tag_name || github.ref_name, 'beta')
         run: |
           pip install uv
           ls -l dist/
           uv publish dist/* -- --repository-url https://test.pypi.org/legacy/
-
-      - name: Create .pypirc
-        if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
-        run: |
-          echo "[pypi]" > $PYPIRC_PATH
-          echo "  username = __token__" >> $PYPIRC_PATH
-          echo "  password = $TWINE_PASSWORD" >> $PYPIRC_PATH
 
       - name: Publish to PyPI
         if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
