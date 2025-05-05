@@ -1,6 +1,12 @@
-# Release Process
+# Release Pull Request Process
 
-This document describes how to create and publish a new release using GitHub Actions.
+This document describes how the "Create Release Pull Request" workflow operates and how to use it.
+
+---
+
+## Overview
+
+The **Create Release Pull Request** workflow is designed to automate the process of preparing
 
 ## Manual Release Workflow
 
