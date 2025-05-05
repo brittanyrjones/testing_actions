@@ -26,7 +26,7 @@ jobs:
           pip install build
           python -m build
 
-      - name: Release to Github
+      - name: Release Draft to Github
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag_name }}
@@ -42,7 +42,7 @@ jobs:
         if: contains(github.event.inputs.tag_name, 'beta')
         run: |
           pip install uv
-          uv publish --repository-url https://test.pypi.org/legacy/
+          uv publish -- --repository-url https://test.pypi.org/legacy/
 
       - name: Publish to PyPI
         if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
