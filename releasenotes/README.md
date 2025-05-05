@@ -56,3 +56,12 @@ Additional documentation:
 
 - testing
 
+
+## Release 0.3.14
+
+
+- Merge pull request #40 from brittanyrjones/beta-release-v0.3.14
+
+
+- testing
+
