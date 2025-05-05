@@ -12,7 +12,7 @@ jobs:
   pypi-publish:
     name: Upload release to PyPI
     runs-on: ubuntu-latest
-    environment: release
+    environment: testpypi
     permissions:
       id-token: write
     steps:
@@ -43,4 +43,5 @@ jobs:
 
         with:
           repository-url: https://test.pypi.org/legacy/
+  
   
