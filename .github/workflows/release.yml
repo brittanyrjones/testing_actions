@@ -33,12 +33,12 @@ jobs:
           uv build
           ls -l dist/
 
-      - name: Publish to TestPyPi
+      - name: Publish to TestPyPI
         if: contains(github.event.inputs.tag_name || github.ref_name, 'beta')
-
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          verbose: true
 
       - name: Publish to PyPI
         if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
