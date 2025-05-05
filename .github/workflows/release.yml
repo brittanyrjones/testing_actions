@@ -5,17 +5,16 @@ on:
     inputs:
       tag_name:
         description: 'Tag to release'
-        required: false
-  push:
-    tags:
-      - 'v*'
+        required: true
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout code at tag
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -26,35 +25,27 @@ jobs:
         run: |
           pip install build
           python -m build
-      - name: Set tag name
-        id: set_tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "TAG_NAME=${{ github.event.inputs.tag_name }}" >> $GITHUB_ENV
-          else
-            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-          fi
-      - name: Release to Github
-        if: startsWith(github.ref, 'refs/tags/')
 
+      - name: Release to Github
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.tag_name }}
           files: |
             dist/*.whl
             dist/*.tar.gz
-          draft: ${{ contains(github.ref, 'beta') }}
-          prerelease: ${{ contains(github.ref, 'beta') }}
-          name: ${{ contains(github.ref, 'beta') && format('Beta Release {0}', github.ref_name) || github.ref_name }}
-          body: ${{ contains(github.ref, 'beta') && 'This is a beta release and is not production ready.' || '' }}
+          draft: ${{ contains(github.event.inputs.tag_name, 'beta') }}
+          prerelease: ${{ contains(github.event.inputs.tag_name, 'beta') }}
+          name: ${{ contains(github.event.inputs.tag_name, 'beta') && format('Beta Release {0}', github.event.inputs.tag_name) || github.event.inputs.tag_name }}
+          body: ${{ contains(github.event.inputs.tag_name, 'beta') && 'This is a beta release and is not production ready.' || '' }}
 
       - name: Publish to TestPyPI
-        if: contains(github.ref, 'beta')
+        if: contains(github.event.inputs.tag_name, 'beta')
         run: |
           pip install uv
           uv publish --repository-url https://test.pypi.org/legacy/
 
       - name: Publish to PyPI
-        if: ${{ !contains(github.ref, 'beta') }}
+        if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
         run: |
           pip install uv
           uv publish
