@@ -1,5 +1,5 @@
 [project]
-name = "bjones-test"
+name = "bjones_testing_actions"
 version = "0.3.19beta"
 description = "Simple test"
 readme = "README.md"
