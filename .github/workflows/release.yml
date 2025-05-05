@@ -33,7 +33,7 @@ jobs:
       - name: Build the artifact in dist/
         run: |
           uv build
-          ls -l dist/  
+          ls -l dist/
       - name: Run tox
         run: tox
 
@@ -51,7 +51,7 @@ jobs:
           name: dist
           path: dist/
       - name: List dist files
-        run: ls -l dist/ 
+        run: ls -l dist/
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -68,3 +68,4 @@ jobs:
         run: |
           pip install uv
           uv publish
+
