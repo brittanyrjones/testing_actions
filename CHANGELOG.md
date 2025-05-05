@@ -1,4 +1,8 @@
 # Changelog
+## 0.3.22
+
+- Merge pull request #57 from brittanyrjones/beta-release-v0.3.22
+
 ## 0.3.22 (Beta)
 
 - tesing
