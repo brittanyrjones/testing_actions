@@ -92,3 +92,12 @@ Additional documentation:
 
 - testing
 
+
+## Release 0.3.20
+
+
+- Merge pull request #53 from brittanyrjones/beta-release-v0.3.20
+
+
+- testing
+
