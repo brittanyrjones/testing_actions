@@ -35,7 +35,7 @@ jobs:
             dist/*.tar.gz
           draft: ${{ contains(github.event.inputs.tag_name, 'beta') }}
           prerelease: ${{ contains(github.event.inputs.tag_name, 'beta') }}
-          name: ${{ contains(github.event.inputs.tag_name, 'beta') && format('Beta Release {0}', github.event.inputs.tag_name) || github.event.inputs.tag_name }}
+          name: ${{ contains(github.event.inputs.tag_name, 'beta') && format('{0}', github.event.inputs.tag_name) || github.event.inputs.tag_name }}
           body: ${{ contains(github.event.inputs.tag_name, 'beta') && 'This is a beta release and is not production ready.' || '' }}
 
       - name: Publish to TestPyPI
