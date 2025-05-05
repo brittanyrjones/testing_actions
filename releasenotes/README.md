@@ -74,3 +74,12 @@ Additional documentation:
 
 - testing
 
+
+## Release 0.3.17
+
+
+- Merge pull request #46 from brittanyrjones/beta-release-v0.3.17
+
+
+- testing
+
