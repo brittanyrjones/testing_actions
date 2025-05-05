@@ -32,6 +32,14 @@ jobs:
         run: |
           uv build
           ls -l dist/
+      - name: Release to Github
+        if: contains(github.event.inputs.tag_name || github.ref_name, 'beta')
+
+        uses: softprops/action-gh-release@v2
+        with:
+            files: | 
+              dist/*.whl
+              dist/*.tar.gz
 
       - name: Publish to TestPyPI
         if: contains(github.event.inputs.tag_name || github.ref_name, 'beta')
