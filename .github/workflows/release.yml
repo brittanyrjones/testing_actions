@@ -47,6 +47,7 @@ jobs:
             dist/*.whl
             dist/*.tar.gz
           token: ${{ secrets.GH_PAT }}
+          draft: true # This is a draft release, it will not be published until the user clicks "Publish release"
 
       - name: Publish to TestPyPI
         if: contains(github.event.inputs.tag_name || github.ref_name, 'beta')
