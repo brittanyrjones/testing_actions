@@ -44,11 +44,17 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code at tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag_name }}
+
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
+
       - name: List dist files
         run: ls -l dist/
 
@@ -58,12 +64,13 @@ jobs:
           python-version: '3.11'
 
       - name: Publish to TestPyPI
-        if: ${{ contains(github.ref, 'refs/tags/') }}
+        if: contains(github.event.inputs.tag_name, 'beta')
         run: |
           pip install uv
           uv publish -- --repository-url https://test.pypi.org/legacy/
+
       - name: Publish to PyPI
-        if: ${{ !contains(github.ref, 'refs/tags/') }}
+        if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
         run: |
           pip install uv
           uv publish
