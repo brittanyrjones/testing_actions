@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.tag_name }}
+          ref: ${{ github.ref_name }}
       - name: Set up Python
         uses: actions/setup-python@v5
       - name: Install uv
@@ -41,6 +41,8 @@ jobs:
 
         uses: softprops/action-gh-release@v2
         with:
+            tag_name: ${{ github.ref_name }}
+
             files: | 
               dist/*.whl
               dist/*.tar.gz
@@ -53,7 +55,7 @@ jobs:
           verbose: true
 
       - name: Publish to PyPI
-        if: ${{ !contains(github.event.inputs.tag_name, 'beta') }}
+        if: ${{ !contains(github.event.inputs.tag_name || github.ref_name, 'beta') }}
         uses: pypa/gh-action-pypi-publish@release/v1
 
         with:
