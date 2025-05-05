@@ -53,7 +53,7 @@ jobs:
         if: contains(github.event.inputs.tag_name || github.ref_name, 'beta')
         run: |
           pip install uv
-          uv publish --repository-url https://test.pypi.org/legacy/
+          uv publish -- --repository-url https://test.pypi.org/legacy/
 
       - name: Publish to PyPI
         if: ${{ !contains(github.event.inputs.tag_name || github.ref_name, 'beta') }}
