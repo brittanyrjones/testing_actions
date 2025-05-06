@@ -1,11 +1,10 @@
-name: Create beta Release Branch
+name: Create Pre-Release Branch
 
 on:
-  workflow_call:
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Branch to create beta release from'
+        description: 'Branch to create pre-release from'
         required: true
         default: 'main'
       bump_type:
@@ -19,7 +18,7 @@ on:
           - patch
 
 jobs:
-  create-beta-release:
+  create-pre-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -27,13 +26,13 @@ jobs:
         with:
           ref: ${{ github.event.inputs.base_branch }}
 
-      - name: Check if merge is from beta branch
-        id: check_beta
+      - name: Check if merge is from pre-release branch
+        id: check_pre_release
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "Manual run: not skipping."
             echo "skip=false" >> $GITHUB_OUTPUT
-            echo "is_beta=false" >> $GITHUB_OUTPUT
+            echo "is_pre_release=false" >> $GITHUB_OUTPUT
             echo "clean_branch=manual" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -43,13 +42,13 @@ jobs:
           echo "Source branch: $CLEAN_BRANCH"
           echo "clean_branch=$CLEAN_BRANCH" >> $GITHUB_OUTPUT
           if [[ -z "$CLEAN_BRANCH" ]] || [[ "$CLEAN_BRANCH" != *beta* ]]; then
-            echo "Not a merge from a beta branch. Skipping workflow."
+            echo "Not a merge from a pre-release branch. Skipping workflow."
             echo "skip=true" >> $GITHUB_OUTPUT
-            echo "is_beta=false" >> $GITHUB_OUTPUT
+            echo "is_pre_release=false" >> $GITHUB_OUTPUT
             exit 0
           else
             echo "skip=false" >> $GITHUB_OUTPUT
-            echo "is_beta=true" >> $GITHUB_OUTPUT
+            echo "is_pre_release=true" >> $GITHUB_OUTPUT
           fi
 
       - name: Extract bump type from source branch or input
@@ -77,7 +76,7 @@ jobs:
           fi
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Ensure beta version in pyproject.toml (manual run)
+      - name: Ensure pre-release version in pyproject.toml (manual run)
         run: |
           CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           # If it doesn't already end with 'beta', add it
@@ -90,7 +89,7 @@ jobs:
           fi
 
       - name: Bump version 
-        id: bump_beta
+        id: bump_pre_release
         run: |
           CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           # Extract only the numeric part (e.g., 0.3.5) from the version string
@@ -103,10 +102,10 @@ jobs:
       - name: Set branch name with new beta version
         id: set_branch
         run: |
-          NEW_VERSION="${{ steps.bump_beta.outputs.new_version }}"
-          echo "branch_name=beta-release-v$NEW_VERSION" >> $GITHUB_OUTPUT
+          NEW_VERSION="${{ steps.bump_pre_release.outputs.new_version }}"
+          echo "branch_name=pre-release-v$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create and checkout the new beta branch
+      - name: Create and checkout the new pre-release branch
         run: |
           git checkout -b "${{ steps.set_branch.outputs.branch_name }}"
       - name: Configure Git user
@@ -116,7 +115,7 @@ jobs:
           
       - name: Commit and push changes
         run: |
-          git commit -m "Beta release v$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)"
+          git commit -m "Pre-release v$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)"
           git push origin "${{ steps.set_branch.outputs.branch_name }}"
 
       - name: Create PR on GitHub
@@ -124,9 +123,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           NEW_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE.md | sed "s/{{RELEASE_SUMMARY}}/Beta release v$NEW_VERSION/")
+          PR_BODY=$(cat .github/PULL_REQUEST_TEMPLATE.md | sed "s/{{RELEASE_SUMMARY}}/Pre-release v$NEW_VERSION/")
           gh pr create \
-            --title "Beta Release v$NEW_VERSION" \
+            --title "Pre-release v$NEW_VERSION" \
             --body "$PR_BODY" \
             --base main \
             --head "${{ steps.set_branch.outputs.branch_name }}" \

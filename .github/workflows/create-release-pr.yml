@@ -110,8 +110,8 @@ jobs:
       - name: Add applink file for this release
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          echo "Release $VERSION" > "releasenotes/applink/v$VERSION"
-          git add "releasenotes/applink/v$VERSION"
+          echo "Release $VERSION" > "releasenotes/heroku_applink_python/v$VERSION"
+          git add "releasenotes/heroku_applink_python/v$VERSION"
 
       - name: Append release info to README.md
         run: |
@@ -123,9 +123,9 @@ jobs:
         id: release_notes
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          mkdir -p releasenotes/applink
-          awk "/^## $VERSION/ {flag=1; next} /^## / {flag=0} flag" CHANGELOG.md > "releasenotes/applink/v$VERSION.md"
-          echo "notes_file=releasenotes/applink/v$VERSION.md" >> $GITHUB_OUTPUT
+          mkdir -p releasenotes/heroku_applink_python
+          awk "/^## $VERSION/ {flag=1; next} /^## / {flag=0} flag" CHANGELOG.md > "releasenotes/heroku_applink_python/v$VERSION.md"
+          echo "notes_file=releasenotes/heroku_applink_python/v$VERSION.md" >> $GITHUB_OUTPUT
 
       - name: Append release notes to releasenotes/README.md
         run: |
@@ -133,13 +133,13 @@ jobs:
           mkdir -p releasenotes
           # Add a heading for the new release
           echo -e "\n## Release $VERSION\n" >> releasenotes/README.md
-          cat "releasenotes/applink/v$VERSION.md" >> releasenotes/README.md
-          git add releasenotes/README.md "releasenotes/applink/v$VERSION.md"
+          cat "releasenotes/heroku_applink_python/v$VERSION.md" >> releasenotes/README.md
+          git add releasenotes/README.md "releasenotes/heroku_applink_python/v$VERSION.md"
 
       - name: Commit and push changes
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          git add pyproject.toml CHANGELOG.md README.md "releasenotes/applink/v$VERSION" releasenotes/README.md "releasenotes/applink/v$VERSION.md"
+          git add pyproject.toml CHANGELOG.md README.md "releasenotes/heroku_applink_python/v$VERSION" releasenotes/README.md "releasenotes/heroku_applink_python/v$VERSION.md"
           git commit -m "Release v$VERSION: update pyproject, changelog, applink, and releasenotes" || echo "No changes to commit"
           git push origin HEAD
 

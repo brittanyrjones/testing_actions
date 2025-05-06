@@ -31,6 +31,10 @@ jobs:
         uses: astral-sh/setup-uv@v5
       - name: Install the project
         run: uv sync --all-extras --dev
+      - name: Install tox
+        run: uv pip install tox
+      - name: Run tox
+        run: tox
       - name: Build the artifact in dist/
         run: |
           uv build
@@ -47,8 +51,6 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-
         with:
           repository-url: https://test.pypi.org/legacy/
-  
   
