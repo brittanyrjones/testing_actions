@@ -2,7 +2,7 @@
 
 set -e -o pipefail
 
-MAIN_BRANCH="bj-release-version"
+MAIN_BRANCH="main"
 
 # Usage: ./scripts/create-pre-release-branch.sh 0.3.25 beta patch
 # Or:    ./scripts/create-pre-release-branch.sh 0.3.25 "" patch
