@@ -89,7 +89,7 @@ jobs:
             echo "Version already includes beta: $CURRENT_VERSION"
           fi
 
-      - name: Bump version and update pyproject.toml to beta
+      - name: Bump version 
         id: bump_beta
         run: |
           CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
@@ -99,8 +99,6 @@ jobs:
           PATCH=${PATCH:-0}
           PATCH=$((PATCH + 1))
           NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-          sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Set branch name with new beta version
         id: set_branch
@@ -116,53 +114,6 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           
-      - name: Update Changelog
-        run: |
-          NEW_VERSION="${{ steps.bump_beta.outputs.new_version }}"
-          # Get all commit messages since the last tag
-          COMMITS=$(git log --pretty=format:"- %s")
-          # If no commits, add a placeholder
-          if [ -z "$COMMITS" ]; then
-            COMMITS="No new commits."
-          fi
-          {
-            echo "## $NEW_VERSION (Beta)"
-            echo ""
-            echo "$COMMITS"
-            echo ""
-          } > NEW_CHANGELOG.md
-
-          # Insert after the first line (# Changelog)
-          awk 'NR==1{print; system("cat NEW_CHANGELOG.md"); next} 1' CHANGELOG.md > CHANGELOG.md.tmp
-          mv CHANGELOG.md.tmp CHANGELOG.md
-          rm NEW_CHANGELOG.md
-          git add CHANGELOG.md
-          
-      - name: Extract release notes for this version
-        id: release_notes
-        run: |
-          VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          mkdir -p releasenotes/applink
-          awk "/^## $VERSION/ {flag=1; next} /^## / {flag=0} flag" CHANGELOG.md > "releasenotes/applink/v${VERSION}beta.md"
-          echo "notes_file=releasenotes/applink/v${VERSION}beta.md" >> $GITHUB_OUTPUT
-        
-      - name: Append release notes to releasenotes/README.md
-        run: |
-          VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
-          mkdir -p releasenotes
-          echo -e "\n## Release ${VERSION}beta\n" >> releasenotes/README.md
-          cat "releasenotes/applink/v${VERSION}beta.md" >> releasenotes/README.md
-          git add releasenotes/README.md "releasenotes/applink/v${VERSION}beta.md"
-        
-      - name: Update pyproject.toml version to beta
-        run: |
-          ORIG_VERSION="${{ steps.bump_beta.outputs.new_version }}"
-          NEW_VERSION="${{ steps.bump_beta.outputs.new_version }}"
-          BUMP_TYPE="${{ steps.bump_type.outputs.bump_type }}"
-          NEW_VERSION="${NEW_VERSION}beta"
-          sed -i "s/version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-          git add pyproject.toml
-
       - name: Commit and push changes
         run: |
           git commit -m "Beta release v$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)"
