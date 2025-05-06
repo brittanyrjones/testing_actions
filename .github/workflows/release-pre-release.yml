@@ -1,23 +1,16 @@
-name: Release
+name: Release Pre-Release
 
 permissions:
   contents: write
   id-token: write
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
-    inputs:
-      tag_name:
-        description: 'Tag to release'
-        required: true
 jobs:
-  pypi-publish:
-    name: Upload release to PyPI
+  test-pypi-publish:
+    name: Upload release to Test PyPI
     runs-on: ubuntu-latest
     environment: 
-      name: pypi
+      name: testpypi
 
     permissions:
       id-token: write
@@ -35,20 +28,8 @@ jobs:
         run: |
           uv build
           ls -l dist/
-      - name: Release to Github
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          name: ${{ github.event.inputs.tag_name || github.ref_name }}
-          files: |
-            dist/*.whl
-            dist/*.tar.gz
-          token: ${{ secrets.GH_PAT }}
-
-      - name: Publish to PyPI
+      - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-
         with:
           repository-url: https://test.pypi.org/legacy/
-  
-  
+          verbose: true

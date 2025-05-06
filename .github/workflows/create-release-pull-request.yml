@@ -13,9 +13,6 @@ on:
           - major
           - minor
           - patch
-  push:
-    branches:
-      - main
 
 jobs:
   create-release:
@@ -24,25 +21,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Check if merge is from beta branch
-        id: check_beta
-        run: |
-          COMMIT_MSG=$(git log -1 --pretty=%B)
-          SRC_BRANCH=$(echo "$COMMIT_MSG" | grep -oE 'from [^ ]+' | awk '{print $2}')
-          CLEAN_BRANCH=$(basename "$SRC_BRANCH")
-          echo "Source branch: $CLEAN_BRANCH"
-          if [[ -z "$CLEAN_BRANCH" ]] || [[ "$CLEAN_BRANCH" != *beta* ]]; then
-            echo "Not a merge from a beta branch. Skipping workflow."
-            echo "skip=true" >> $GITHUB_OUTPUT
-            echo "is_beta=false" >> $GITHUB_OUTPUT
-            exit 0
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "is_beta=true" >> $GITHUB_OUTPUT
-          fi
-
       - name: Extract bump type from source branch or input
-        if: steps.check_beta.outputs.skip == 'false'
         id: bump_type
         run: |
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
@@ -57,41 +36,30 @@ jobs:
           fi
 
       - name: Set up Python
-        if: steps.check_beta.outputs.skip == 'false'
         uses: actions/setup-python@v3
 
       - name: Install uv
-        if: steps.check_beta.outputs.skip == 'false'
         uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
       - name: Install the project
-        if: steps.check_beta.outputs.skip == 'false'
-
         run: uv sync --all-extras --dev
 
       - name: Install tox
-        if: steps.check_beta.outputs.skip == 'false'
-
         run: pip install tox
 
       - name: Run tox
-        if: steps.check_beta.outputs.skip == 'false'
-
         run: tox
 
       - name: Get current version
-        if: steps.check_beta.outputs.skip == 'false'
         id: current_version
         run: |
           CURRENT_VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           echo "version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
 
       - name: Prepare release version
-        if: steps.check_beta.outputs.skip == 'false'
-
         id: release_version
         run: |
           CURRENT_VERSION="${{ steps.current_version.outputs.version }}"
@@ -102,7 +70,6 @@ jobs:
           echo "release_version=$RELEASE_VERSION" >> $GITHUB_OUTPUT
 
       - name: Update pyproject.toml version
-        if: steps.check_beta.outputs.skip == 'false'
         run: |
           RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
           sed -i "s/^version = \".*\"/version = \"$RELEASE_VERSION\"/" pyproject.toml
@@ -126,42 +93,33 @@ jobs:
           git add CHANGELOG.md
 
       - name: Configure Github Actions Bot user
-        if: steps.check_beta.outputs.skip == 'false'
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Set branch name
-        if: steps.check_beta.outputs.skip == 'false'
         id: set_branch
         run: |
           RELEASE_VERSION="${{ steps.release_version.outputs.release_version }}"
           echo "branch_name=release-v$RELEASE_VERSION" >> $GITHUB_OUTPUT
 
       - name: Create and checkout release branch
-        if: steps.check_beta.outputs.skip == 'false'
         run: |
           git checkout -b "${{ steps.set_branch.outputs.branch_name }}"
 
       - name: Add applink file for this release
-        if: steps.check_beta.outputs.skip == 'false'
-
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           echo "Release $VERSION" > "releasenotes/applink/v$VERSION"
           git add "releasenotes/applink/v$VERSION"
 
       - name: Append release info to README.md
-        if: steps.check_beta.outputs.skip == 'false'
-
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           echo "- Released $VERSION" >> README.md
           git add README.md
 
       - name: Extract release notes for this version
-        if: steps.check_beta.outputs.skip == 'false'
-
         id: release_notes
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
@@ -170,8 +128,6 @@ jobs:
           echo "notes_file=releasenotes/applink/v$VERSION.md" >> $GITHUB_OUTPUT
 
       - name: Append release notes to releasenotes/README.md
-        if: steps.check_beta.outputs.skip == 'false'
-
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           mkdir -p releasenotes
@@ -181,7 +137,6 @@ jobs:
           git add releasenotes/README.md "releasenotes/applink/v$VERSION.md"
 
       - name: Commit and push changes
-        if: steps.check_beta.outputs.skip == 'false'
         run: |
           VERSION=$(grep -Po '^version = "\K[^"]+' pyproject.toml | head -1)
           git add pyproject.toml CHANGELOG.md README.md "releasenotes/applink/v$VERSION" releasenotes/README.md "releasenotes/applink/v$VERSION.md"
@@ -189,7 +144,6 @@ jobs:
           git push origin HEAD
 
       - name: Create PR on GitHub
-        if: steps.check_beta.outputs.skip == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
