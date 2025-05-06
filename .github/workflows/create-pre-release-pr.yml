@@ -7,6 +7,10 @@ on:
         description: 'Branch to create pre-release from'
         required: true
         default: 'main'
+      version:
+        description: 'Version to release'
+        required: true
+        type: string
       bump_type:
         description: 'Version bump type (major, minor, patch)'
         required: true
