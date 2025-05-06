@@ -116,3 +116,166 @@ Additional documentation:
 
 - Merge pull request #59 from brittanyrjones/beta-release-v0.3.23
 
+
+## Release 0.3.25beta
+
+
+- Merge pull request #64 from brittanyrjones/beta-release-v0.3.24
+- Beta release v0.3.24beta
+- Merge pull request #59 from brittanyrjones/beta-release-v0.3.23
+- Beta release v0.3.23beta
+- testing
+- Merge pull request #57 from brittanyrjones/beta-release-v0.3.22
+- test
+- testing
+- Beta release v0.3.22beta
+- tesing
+- testing
+- tesitng
+- Merge pull request #55 from brittanyrjones/beta-release-v0.3.21
+- Beta release v0.3.21beta
+- testing
+- Merge pull request #53 from brittanyrjones/beta-release-v0.3.20
+- Beta release v0.3.20beta
+- testing
+- testing
+- teastin
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- tesitng
+- testing
+- testing
+- tetsing
+- Merge pull request #51 from brittanyrjones/beta-release-v0.3.19
+- Beta release v0.3.19beta
+- testing
+- Merge pull request #49 from brittanyrjones/beta-release-v0.3.18
+- Beta release v0.3.18beta
+- tesitng
+- testing
+- testong
+- testing
+- tesitng
+- Merge pull request #46 from brittanyrjones/beta-release-v0.3.17
+- Beta release v0.3.17beta
+- testing
+- Merge pull request #44 from brittanyrjones/beta-release-v0.3.16
+- Beta release v0.3.16beta
+- testing
+- Merge pull request #42 from brittanyrjones/beta-release-v0.3.15
+- Beta release v0.3.15beta
+- testing
+- testing
+- Merge pull request #40 from brittanyrjones/beta-release-v0.3.14
+- Beta release v0.3.14beta
+- testing
+- Merge pull request #38 from brittanyrjones/beta-release-v0.3.13
+- Beta release v0.3.13beta
+- testing
+- tesitng
+- Merge pull request #37 from brittanyrjones/beta-release-v0.3.12
+- testing
+- Beta release v0.3.12beta
+- testing
+- testing
+- testing
+- testing
+- testing
+- Merge pull request #33 from brittanyrjones/beta-release-v0.3.11
+- Beta release v0.3.11beta
+- testing
+- testing
+- testing
+- testing
+- Merge pull request #30 from brittanyrjones/beta-release-v0.3.10
+- Beta release v0.3.10beta
+- test
+- Merge pull request #28 from brittanyrjones/beta-release-v0.3.9
+- Beta release v0.3.9beta
+- testing
+- esting
+- Merge pull request #26 from brittanyrjones/beta-release-v0.3.8
+- Beta release v0.3.8beta
+- testing
+- Merge pull request #24 from brittanyrjones/beta-release-v0.3.7
+- Beta release v0.3.7beta
+- testing
+- Merge pull request #22 from brittanyrjones/beta-release-v0.3.6
+- Beta release v0.3.6beta
+- testing
+- Merge pull request #20 from brittanyrjones/beta-release-v0.3.5
+- Beta release v0.3.5beta
+- testing
+- testing
+- testing
+- testing
+- oops
+- oops
+- Release v
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- Merge pull request #14 from brittanyrjones/beta-release-v0.3.3beta
+- Beta release v0.3.4beta
+- testing
+- testing
+- tesrting
+- testing
+- tesing
+- testing
+- Merge pull request #9 from brittanyrjones/beta-release-v0.3.3
+- Update CHANGELOG.md and pyproject.toml for version 0.3.3
+- testing
+- Merge pull request #8 from brittanyrjones/beta-release-v0.3.2
+- Update CHANGELOG.md and pyproject.toml for version 0.3.2
+- Merge pull request #7 from brittanyrjones/beta-release-v0.3.1
+- Update CHANGELOG.md and pyproject.toml for version 0.3.1
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- Merge pull request #5 from brittanyrjones/beta-release-v0.4.0
+- Update CHANGELOG.md and pyproject.toml for version 0.4.0
+- testing
+- Merge pull request #4 from brittanyrjones/beta-release-v0.3.0
+- Update CHANGELOG.md and pyproject.toml for version 0.3.0
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- testing
+- Merge pull request #3 from brittanyrjones/beta-release-v0.2.0
+- Update CHANGELOG.md and pyproject.toml for version 0.2.0
+- testing
+- test
+- testing
+- Create   CHANGELOG.md
+- Testing
+- Merge pull request #1 from brittanyrjones/bj-test
+- testnig
+- testing
+- testing
+- testing
+- Initial commit
+
