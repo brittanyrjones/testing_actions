@@ -1,9 +1,7 @@
 name: Build, Test and Publish
 
-# Trigger on PR merges to main
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches:
       - main
 
@@ -38,8 +36,9 @@ jobs:
   publish-to-testpypi:
     needs: build-and-test
     if: |
-      github.event.pull_request.merged == true && 
-      contains(github.event.pull_request.title, 'Beta Testing')
+      contains(github.event.head_commit.message, 'Merge pull request') &&
+      contains(github.event.head_commit.message, 'release-v') &&
+      contains(github.event.head_commit.message, 'Beta Testing')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
