@@ -1,50 +1,61 @@
 name: Publish Release
 
+# Trigger on closed pull requests
 on:
   pull_request:
     types: [closed]
     branches:
       - main
-    paths:
-      - 'pyproject.toml'
-      - 'CHANGELOG.md'
-      - 'releasenotes/**'
 
 jobs:
-  publish:
-    if: github.event.pull_request.merged == true
+  validate-and-publish:
+    # Only run if PR was merged (not just closed) and is a release PR
+    if: |
+      github.event.pull_request.merged == true && 
+      contains(github.event.pull_request.title, 'Release')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install build twine
 
+      # Extract version from pyproject.toml
       - name: Get version from pyproject.toml
         id: get_version
         run: |
           VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create Git tag
+      # Check if this is a stable version (no rc, beta, or alpha)
+      - name: Check if stable version
+        id: check_stable
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git tag -a "v${{ steps.get_version.outputs.VERSION }}" -m "Release v${{ steps.get_version.outputs.VERSION }}"
-          git push origin "v${{ steps.get_version.outputs.VERSION }}"
+          if [[ ! "${{ steps.get_version.outputs.VERSION }}" =~ (rc|beta|alpha) ]]; then
+            echo "is_stable=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_stable=false" >> $GITHUB_OUTPUT
+          fi
 
+      # Build package for PyPI
       - name: Build package
+        if: steps.check_stable.outputs.is_stable == 'true'
         run: python -m build
 
+      # Publish to PyPI
       - name: Publish to PyPI
+        if: steps.check_stable.outputs.is_stable == 'true'
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
@@ -56,7 +67,7 @@ jobs:
         with:
           name: "Release v${{ steps.get_version.outputs.VERSION }}"
           body_path: CHANGELOG.md
-          draft: false
+          draft: true
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

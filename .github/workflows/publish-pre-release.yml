@@ -1,33 +1,31 @@
 name: Publish Pre-release
 
-# Trigger on PR merge to main that affects version-related files
+# Trigger on closed pull requests
 on:
   pull_request:
     types: [closed]
     branches:
       - main
-    paths:
-      - 'pyproject.toml'
-      - 'CHANGELOG.md'
-      - 'releasenotes/**'
 
 jobs:
-  publish:
-    # Only run if PR was merged (not just closed)
-    if: github.event.pull_request.merged == true
+  validate-and-publish:
+    # Only run if PR was merged (not just closed) and is a release PR
+    if: |
+      github.event.pull_request.merged == true && 
+      contains(github.event.pull_request.title, 'Beta Testing')
     runs-on: ubuntu-latest
     steps:
-      # Checkout code without history to speed up workflow
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Set up Python environment
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.11'
+          cache: 'pip'
 
-      # Install build dependencies
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -55,13 +53,12 @@ jobs:
         if: steps.check_prerelease.outputs.is_prerelease == 'true'
         run: python -m build
 
-      # Publish to PyPI
-      # Note: Pre-releases are only published to PyPI, not TestPyPI
-      # This allows users to test with real package names
-      - name: Publish to PyPI
+      # Publish to TestPyPI
+      - name: Publish to TestPyPI
         if: steps.check_prerelease.outputs.is_prerelease == 'true'
         env:
           TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
         run: |
-          python -m twine upload dist/* 
+          twine upload --repository testpypi dist/*
+
