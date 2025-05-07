@@ -62,8 +62,8 @@ jobs:
         run: |
           twine upload --repository testpypi dist/*
 
-      # Update merge commit status
-      - name: Update merge commit status
+      # Create check run
+      - name: Create check run
         if: always()
         uses: actions/github-script@v7
         with:
@@ -72,13 +72,17 @@ jobs:
             const pr = context.payload.pull_request;
             
             if (pr && pr.merged) {
-              await github.rest.repos.createCommitStatus({
+              await github.rest.checks.create({
                 owner,
                 repo,
-                sha: pr.merge_commit_sha,
-                state: process.env.JOB_STATUS === 'success' ? 'success' : 'failure',
-                context: 'Publish Pre-release',
-                description: process.env.JOB_STATUS === 'success' ? 'Pre-release published successfully' : 'Pre-release publish failed'
+                name: 'Publish Pre-release',
+                head_sha: pr.merge_commit_sha,
+                status: 'completed',
+                conclusion: process.env.JOB_STATUS === 'success' ? 'success' : 'failure',
+                output: {
+                  title: process.env.JOB_STATUS === 'success' ? 'Pre-release published successfully' : 'Pre-release publish failed',
+                  summary: process.env.JOB_STATUS === 'success' ? 'The pre-release was published successfully' : 'The pre-release publish workflow failed'
+                }
               });
             }
         env:
