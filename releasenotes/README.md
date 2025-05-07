@@ -116,3 +116,12 @@ Additional documentation:
 
 - Merge pull request #59 from brittanyrjones/beta-release-v0.3.23
 
+
+## Release 0.3.24
+
+
+- Merge pull request #64 from brittanyrjones/beta-release-v0.3.24
+
+
+- Merge pull request #59 from brittanyrjones/beta-release-v0.3.23
+
