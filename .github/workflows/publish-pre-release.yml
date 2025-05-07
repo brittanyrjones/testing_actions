@@ -9,7 +9,7 @@ on:
 
 jobs:
   validate-and-publish:
-    # Only run if PR was merged (not just closed) and is from a pre-release branch
+    # Only run if PR was merged (not just closed) and is a release PR
     if: |
       github.event.pull_request.merged == true && 
       contains(github.event.pull_request.title, 'Beta Testing')
@@ -61,30 +61,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
         run: |
           twine upload --repository testpypi dist/*
-
-      # Create check run
-      - name: Create check run
-        if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const pr = context.payload.pull_request;
-            
-            if (pr && pr.merged) {
-              await github.rest.checks.create({
-                owner,
-                repo,
-                name: 'Publish Pre-release',
-                head_sha: pr.merge_commit_sha,
-                status: 'completed',
-                conclusion: process.env.JOB_STATUS === 'success' ? 'success' : 'failure',
-                output: {
-                  title: process.env.JOB_STATUS === 'success' ? 'Pre-release published successfully' : 'Pre-release publish failed',
-                  summary: process.env.JOB_STATUS === 'success' ? 'The pre-release was published successfully' : 'The pre-release publish workflow failed'
-                }
-              });
-            }
-        env:
-          JOB_STATUS: ${{ job.status }}
 
