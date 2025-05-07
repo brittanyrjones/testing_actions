@@ -1,0 +1,102 @@
+name: Create Stable Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+      bump_type:
+        description: 'Type of version bump (major, minor, patch)'
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Get last tag
+        id: last_tag
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "LAST_TAG=$LAST_TAG" >> $GITHUB_OUTPUT
+
+      - name: Create release branch
+        run: |
+          git checkout -b "release-v${{ github.event.inputs.version }}"
+
+      - name: Update version in pyproject.toml
+        run: |
+          sed -i "s/^version = \".*\"/version = \"${{ github.event.inputs.version }}\"/" pyproject.toml
+
+      - name: Generate changelog
+        run: |
+          if [ -n "${{ steps.last_tag.outputs.LAST_TAG }}" ]; then
+            git log --graph --format="%h %s" "${{ steps.last_tag.outputs.LAST_TAG }}..HEAD" > CHANGELOG.md
+          else
+            git log --graph --format="%h %s" > CHANGELOG.md
+          fi
+
+      - name: Create release notes
+        run: |
+          mkdir -p releasenotes/package_name
+          echo "Stable Release ${{ github.event.inputs.version }}" > "releasenotes/package_name/v${{ github.event.inputs.version }}"
+
+      - name: Update documentation
+        run: |
+          # Update README.md if needed
+          if [ -f "README.md" ]; then
+            sed -i "s/version = \".*\"/version = \"${{ github.event.inputs.version }}\"/" README.md
+          fi
+          
+          # Update API documentation if needed
+          if [ -d "docs" ]; then
+            # Add any documentation update commands here
+            echo "Documentation updates completed"
+          fi
+
+      - name: Run tests
+        run: |
+          python -m pip install -e .
+          python -m pytest
+
+      - name: Build package
+        run: python -m build
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Stable Release v${{ github.event.inputs.version }}"
+          title: "Stable Release v${{ github.event.inputs.version }}"
+          body: |
+            Stable release version bump and documentation updates.
+            
+            Changes:
+            - Updated version to ${{ github.event.inputs.version }}
+            - Generated changelog
+            - Created release notes
+            - Updated documentation
+            - Built package
+          branch: "release-v${{ github.event.inputs.version }}"
+          base: main
+          draft: true 

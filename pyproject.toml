@@ -9,8 +9,19 @@ dependencies = [
     "orjson>=3.10.15",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+]
+
 [tool.setuptools]
 packages = []
 
 [project.urls]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --cov=hello_world --cov-report=term-missing"
 

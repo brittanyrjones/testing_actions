@@ -1,0 +1,64 @@
+name: Create RC Release Tag
+
+# Trigger on PR merge to main that affects version-related files
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
+      - 'CHANGELOG.md'
+      - 'hello_world/**'
+
+jobs:
+  create-tag:
+    # Only run if PR was merged (not just closed)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout code with full history for tag creation
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      # Run backward compatibility tests
+      - name: Run backward compatibility tests
+        run: |
+          pytest tests/test_backward_compatibility.py -v
+
+      # Extract version from pyproject.toml
+      - name: Extract version
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      # Check if this is an RC version
+      - name: Check if version is RC
+        run: |
+          if [[ ! "$VERSION" =~ rc[0-9]+$ ]]; then
+            echo "Not an RC version, skipping tag creation"
+            exit 0
+          fi
+
+      # Create and push git tag
+      - name: Create and push tag
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git tag -a "v$VERSION" -m "Release Candidate v$VERSION"
+          git push origin "v$VERSION" 

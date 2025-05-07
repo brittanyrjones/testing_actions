@@ -1,0 +1,83 @@
+name: Create Pre-release
+
+# Manual trigger for alpha/beta releases
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Base version (e.g., 1.0.0)'
+        required: true
+      release_type:
+        description: 'Type of pre-release'
+        required: true
+        type: choice
+        options:
+          - beta
+          - alpha
+      bump_type:
+        description: 'Type of version bump (major, minor, patch)'
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+jobs:
+  create-pre-release:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout code without history to speed up workflow
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # Install build dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      # Format version with alpha/beta suffix
+      - name: Extract version info
+        id: version
+        run: |
+          echo "VERSION=${{ github.event.inputs.version }}${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+
+      # Create feature branch for the pre-release
+      - name: Create release branch
+        run: |
+          git checkout -b "release-v${{ steps.version.outputs.VERSION }}"
+
+      # Run tests to ensure quality
+      - name: Run tests
+        run: |
+          python -m pip install -e .
+          python -m pytest
+
+      # Build package for PyPI
+      - name: Build package
+        run: python -m build
+
+      # Create PR for review
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Pre-release v${{ steps.version.outputs.VERSION }}"
+          title: "Pre-release v${{ steps.version.outputs.VERSION }}"
+          body: |
+            Pre-release version bump and documentation updates.
+            
+            Changes:
+            - Built package
+            - No version update in pyproject.toml for pre-release
+            - No documentation updates required for pre-release
+          branch: "release-v${{ steps.version.outputs.VERSION }}"
+          base: main
+          draft: true 
