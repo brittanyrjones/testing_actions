@@ -1,15 +1,42 @@
-name: Publish Pre-release
+name: Build, Test and Publish
 
 # Trigger on PR merges to main
 on:
   pull_request:
-    types: [opened]
+    types: [closed]
     branches:
       - main
 
 jobs:
-  validate-and-publish:
-    # Only run if PR was merged (not just closed) and is a release PR
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv pip install build twine pytest tox
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/
+
+  publish-to-testpypi:
+    needs: build-and-test
     if: |
       github.event.pull_request.merged == true && 
       contains(github.event.pull_request.title, 'Beta Testing')
@@ -24,12 +51,16 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
+          cache: 'uv'
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install build twine
+          uv pip install build twine
 
       # Extract version from pyproject.toml
       - name: Get version from pyproject.toml
