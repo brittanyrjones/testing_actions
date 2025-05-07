@@ -6,89 +6,33 @@ on:
       - main
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'uv'
-
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies
-        run: |
-          uv pip install build twine pytest tox
-
-      - name: Run tests
-        run: |
-          python -m pytest tests/
-
-  publish-to-testpypi:
-    needs: build-and-test
+  publish-pre-release:
     if: |
       contains(github.event.head_commit.message, 'Merge pull request') &&
       contains(github.event.head_commit.message, 'release-v') &&
       contains(github.event.head_commit.message, 'Beta Testing')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - uses: actions/checkout@v4
+    - name: Set up Python 
+      uses: actions/setup-python@v3
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"
+    - name: Install the project
+      run: uv sync --all-extras --dev
+    - name: Run Tests
+      run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
+    - name: Build the artifact in dist/
+      run: uv build
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'uv'
-
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies
-        run: |
-          uv pip install build twine
-
-      # Extract version from pyproject.toml
-      - name: Get version from pyproject.toml
-        id: get_version
-        run: |
-          VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      # Check if this is a pre-release version
-      - name: Check if pre-release
-        id: check_prerelease
-        run: |
-          if [[ "${{ steps.get_version.outputs.VERSION }}" == *"beta"* ]] || [[ "${{ steps.get_version.outputs.VERSION }}" == *"alpha"* ]]; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
-          fi
-
-      # Build package for PyPI
-      - name: Build package
-        if: steps.check_prerelease.outputs.is_prerelease == 'true'
-        run: python -m build
-
-      # Publish to TestPyPI
-      - name: Publish to TestPyPI
-        if: steps.check_prerelease.outputs.is_prerelease == 'true'
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
-        run: |
-          twine upload --repository testpypi dist/*
+    # Publish to TestPyPI
+    - name: Publish to TestPyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+      run: |
+        twine upload --repository testpypi dist/*
 
