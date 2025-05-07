@@ -1,6 +1,6 @@
 name: Publish Pre-release
 
-# Trigger on closed pull requests
+# Trigger on PR merges to main
 on:
   pull_request:
     types: [closed]
@@ -9,7 +9,7 @@ on:
 
 jobs:
   validate-and-publish:
-    # Only run if PR was merged (not just closed) and is a release PR
+    # Only run if PR was merged (not just closed) and is from a pre-release branch
     if: |
       github.event.pull_request.merged == true && 
       contains(github.event.pull_request.title, 'Beta Testing')
@@ -61,4 +61,26 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
         run: |
           twine upload --repository testpypi dist/*
+
+      # Update merge commit status
+      - name: Update merge commit status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            
+            if (pr && pr.merged) {
+              await github.rest.repos.createCommitStatus({
+                owner,
+                repo,
+                sha: pr.merge_commit_sha,
+                state: process.env.JOB_STATUS === 'success' ? 'success' : 'failure',
+                context: 'Publish Pre-release',
+                description: process.env.JOB_STATUS === 'success' ? 'Pre-release published successfully' : 'Pre-release publish failed'
+              });
+            }
+        env:
+          JOB_STATUS: ${{ job.status }}
 
