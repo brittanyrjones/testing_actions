@@ -108,7 +108,7 @@ check_pyproject_docs() {
     if [ ! -f "$pyproject_file" ]; then
         echo "Error: pyproject.toml not found"
         exit 1
-    }
+    fi
 
     # Check for long description configuration
     if ! grep -q "long-description" "$pyproject_file"; then
