@@ -116,3 +116,14 @@ Additional documentation:
 
 - Merge pull request #59 from brittanyrjones/beta-release-v0.3.23
 
+
+## Release 0.3.25
+
+
+### Changes since v0.3.24beta
+
+* 797ce68 testing
+* ab4d68e tsting
+* 1322d82 testing
+* f2a4d34 testing
+
