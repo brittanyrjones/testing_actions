@@ -13,6 +13,7 @@ dependencies = [
 test = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",
+    "tox>=4.11.0",
 ]
 
 [tool.setuptools]
@@ -24,4 +25,18 @@ packages = []
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-v --cov=hello_world --cov-report=term-missing"
+
+[tool.tox]
+legacy_tox_ini = """
+[tox]
+envlist = py310,py311
+isolated_build = True
+
+[testenv]
+deps = 
+    pytest>=7.4.0
+    pytest-cov>=4.1.0
+commands = 
+    pytest tests/ -v --cov=hello_world --cov-report=term-missing
+"""
 

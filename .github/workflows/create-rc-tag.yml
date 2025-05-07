@@ -35,11 +35,17 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[test]"
+          pip install build
 
-      # Run backward compatibility tests
-      - name: Run backward compatibility tests
+      # Build the package
+      - name: Build package
         run: |
-          pytest tests/test_backward_compatibility.py -v
+          python -m build
+
+      # Run tox tests
+      - name: Run tox tests
+        run: |
+          tox -e py310,py311
 
       # Extract version from pyproject.toml
       - name: Extract version
