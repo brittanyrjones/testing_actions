@@ -3,7 +3,7 @@ name: Publish Pre-release
 # Trigger on PR merges to main
 on:
   pull_request:
-    types: [closed]
+    types: [opened]
     branches:
       - main
 
