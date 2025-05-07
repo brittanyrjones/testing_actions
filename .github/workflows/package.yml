@@ -1,4 +1,4 @@
-name: Package Library
+name: Build and Test
 permissions:
   contents: write
   id-token: write
