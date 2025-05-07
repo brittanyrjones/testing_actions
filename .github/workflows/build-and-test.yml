@@ -24,9 +24,7 @@ jobs:
         cache-dependency-glob: "uv.lock"
     - name: Install the project
       run: uv sync --all-extras --dev
-    - name: Run tests
-      run: uv run pytest
-    - name: Check test coverage
+    - name: Run Tests
       run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
     - name: Build the artifact in dist/
       run: uv build
