@@ -5,7 +5,9 @@ on:
   workflow_call:
   push:
     tags:
-      - 'v*.beta*'
+      - 'v*beta*'
+      - 'beta-v*'
+      - 'v*.*beta*'
 
 jobs:
   publish:
