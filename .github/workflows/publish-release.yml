@@ -4,8 +4,13 @@ on:
   workflow_dispatch:
   workflow_call:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+      - '!v*beta*'
+      - '!beta-v*'
+      - '!v*.*beta*'
 
 jobs:
   publish:
@@ -30,12 +35,20 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          # Remove 'v' prefix and get the version
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            # Extract version from tag
+            TAG=${GITHUB_REF#refs/tags/}
+            # Remove 'v' prefix
+            VERSION=${TAG#v}
+          else
+            # For main branch, just use a placeholder version for validation
+            VERSION="0.0.0"
+          fi
+          echo "version=$VERSION" >> $GITHUB_ENV
 
-      # Publish to PyPI
+      # Only publish and create release if this is a tag push
       - name: Publish to PyPI
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
@@ -44,11 +57,12 @@ jobs:
 
       # Create GitHub Release
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          name: "Release v${{ steps.get_version.outputs.VERSION }}"
+          name: "Release v${{ env.version }}"
           body_path: CHANGELOG.md
           draft: true
-          prerelease: ${{ startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '.beta') }}
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
