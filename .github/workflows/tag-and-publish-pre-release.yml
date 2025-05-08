@@ -50,11 +50,11 @@ jobs:
           TAG_MESSAGE="Beta Release v$TAG_VERSION"
           
           # Create and push tag
-          git tag -s "v$TAG_VERSION" -m "$TAG_MESSAGE"
-          git push origin "v$TAG_VERSION"
+          git tag -s "$TAG_VERSION" -m "$TAG_MESSAGE"
+          git push origin "$TAG_VERSION"
           
           # Output the tag and version for the next step
-          echo "tag=v$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG_VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
   publish:
