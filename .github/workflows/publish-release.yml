@@ -4,6 +4,8 @@ on:
   workflow_dispatch:
   workflow_call:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
 
@@ -26,11 +28,12 @@ jobs:
       - name: Build the artifact in dist/
         run: uv build
 
-      # Get version from pyproject.toml
+      # Get version from tag
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+          # Remove 'v' prefix and get the version
+          VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       # Publish to PyPI
