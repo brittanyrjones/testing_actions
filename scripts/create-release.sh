@@ -6,9 +6,10 @@ MAIN_BRANCH="main"
 
 # Function to display usage
 usage() {
-    echo "Usage: $0 <bump_type> <release_type>"
+    echo "Usage: $0 <bump_type> <release_type> [version]"
     echo "  bump_type: major, minor, or patch"
     echo "  release_type: rc, beta, or stable"
+    echo "  version: optional specific version (e.g., 0.3.24-beta)"
     exit 1
 }
 
@@ -126,12 +127,13 @@ check_pyproject_docs() {
 }
 
 # Check if required arguments are provided
-if [ "$#" -ne 2 ]; then
+if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
     usage
 fi
 
 BUMP_TYPE=$1
 RELEASE_TYPE=$2
+SPECIFIC_VERSION=$3
 
 # Validate bump type
 if [[ ! "$BUMP_TYPE" =~ ^(major|minor|patch)$ ]]; then
@@ -145,11 +147,16 @@ if [[ ! "$RELEASE_TYPE" =~ ^(rc|beta|stable)$ ]]; then
     usage
 fi
 
-# Get current version from pyproject.toml
-CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
-
-# Remove any pre-release suffix for version calculation
-BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/-[a-z].*$//')
+# Get current version from pyproject.toml or use specific version
+if [ -n "$SPECIFIC_VERSION" ]; then
+    CURRENT_VERSION=$SPECIFIC_VERSION
+    # Remove any pre-release suffix for version calculation
+    BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/-[a-z].*$//')
+else
+    CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+    # Remove any pre-release suffix for version calculation
+    BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/-[a-z].*$//')
+fi
 
 # Split version into components
 IFS='.' read -r -a VERSION_PARTS <<< "$BASE_VERSION"
