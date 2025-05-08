@@ -111,6 +111,7 @@ jobs:
         with:
           tag_name: ${{ needs.create-tag.outputs.tag }}
           name: "Release ${{ needs.create-tag.outputs.tag }}"
+          generate_release_notes: true
           draft: false
           prerelease: false
           files: |

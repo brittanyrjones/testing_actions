@@ -163,6 +163,7 @@ jobs:
         with:
           tag_name: v${{ needs.create-tag.outputs.tag }}
           name: "Beta Release v${{ needs.create-tag.outputs.tag }}"
+          generate_release_notes: true
           draft: false
           prerelease: true
           files: |
