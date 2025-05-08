@@ -19,6 +19,8 @@ jobs:
       contains(github.event.head_commit.message, 'Release') &&
       !contains(github.event.head_commit.message, 'beta')
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.create_tag.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -99,9 +101,11 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          name: "Release ${{ github.ref_name }}"
-          body_path: CHANGELOG.md
-          draft: true
+          tag_name: ${{ needs.create-tag.outputs.tag }}
+          name: "Release ${{ needs.create-tag.outputs.tag }}"
+          body: "Release ${{ needs.create-tag.outputs.tag }}"
+          draft: false
+          prerelease: false
           files: |
             dist/*.whl
             dist/*.tar.gz
