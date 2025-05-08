@@ -30,18 +30,10 @@ jobs:
       - name: Build the artifact in dist/
         run: uv build
 
-      # Get version from tag or branch
+      # Get version from tag
       - name: Get version
         id: get_version
-        run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            # For tags, remove 'v' prefix
-            VERSION=${GITHUB_REF#refs/tags/v}
-          else
-            # For main branch, get the latest beta tag
-            VERSION=$(git describe --tags --match "v*beta*" --abbrev=0 | sed 's/^v//')
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
 
       # Only publish and create release if this is a tag push
       - name: Publish to TestPyPI
