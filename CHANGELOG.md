@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.3.26] - 2025-05-08
+
+- Merge pull request #111 from brittanyrjones/release-v0.3.26 (6a3d245)
+
+# Changelog
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
