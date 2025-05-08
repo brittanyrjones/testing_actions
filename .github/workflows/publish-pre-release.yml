@@ -1,38 +1,58 @@
-name: Build, Test and Publish
+name: Publish Pre-release
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+    inputs:
+      is_release_merge:
+        required: true
+        type: boolean
+      release_type:
+        required: true
+        type: string
 
 jobs:
   publish-pre-release:
-    if: |
-      contains(github.event.head_commit.message, 'Merge pull request') &&
-      contains(github.event.head_commit.message, 'release-v') &&
-      contains(github.event.head_commit.message, 'Beta Testing')
+    if: ${{ inputs.is_release_merge && inputs.release_type == 'beta' }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 
-      uses: actions/setup-python@v3
-    - name: Install uv
-      uses: astral-sh/setup-uv@v5
-      with:
-        enable-cache: true
-        cache-dependency-glob: "uv.lock"
-    - name: Install the project
-      run: uv sync --all-extras --dev
-    - name: Run Tests
-      run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
-    - name: Build the artifact in dist/
-      run: uv build
+      - uses: actions/checkout@v4
+      - name: Set up Python 
+        uses: actions/setup-python@v3
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install the project
+        run: uv sync --all-extras --dev
+      - name: Run Tests
+        run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
+      - name: Build the artifact in dist/
+        run: uv build
 
-    # Publish to TestPyPI
-    - name: Publish to TestPyPI
-      env:
-        TWINE_USERNAME: __token__
-        TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
-      run: |
-        twine upload --repository testpypi dist/*
+      # Get version from pyproject.toml
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      # Publish to TestPyPI
+      - name: Publish to TestPyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        run: |
+          twine upload --repository testpypi dist/*
+
+      # Create GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "Beta Release v${{ steps.get_version.outputs.VERSION }}"
+          body_path: CHANGELOG.md
+          draft: true
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
