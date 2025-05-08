@@ -50,7 +50,7 @@ jobs:
           TAG_MESSAGE="Beta Release v$TAG_VERSION"
           
           # Create and push tag
-          git tag -a "v$TAG_VERSION" -m "$TAG_MESSAGE"
+          git tag -s "v$TAG_VERSION" -m "$TAG_MESSAGE"
           git push origin "v$TAG_VERSION"
           
           # Output the tag and version for the next step
@@ -161,8 +161,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v${{ needs.create-tag.outputs.tag }}
-          name: "Beta Release v${{ needs.create-tag.outputs.tag }}"
+          tag_name: ${{ needs.create-tag.outputs.tag }}
+          name: "Beta Release ${{ needs.create-tag.outputs.tag }}"
           generate_release_notes: true
           draft: false
           prerelease: true

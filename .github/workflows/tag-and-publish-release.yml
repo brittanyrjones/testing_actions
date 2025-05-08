@@ -47,11 +47,11 @@ jobs:
           VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
           echo "Found version: $VERSION"
           
-          TAG_VERSION="v$VERSION"
+          TAG_VERSION="$VERSION"
           TAG_MESSAGE="Release v$TAG_VERSION"
           
           # Create and push tag
-          git tag -a "$TAG_VERSION" -m "$TAG_MESSAGE"
+          git tag -s "$TAG_VERSION" -m "$TAG_MESSAGE"
           git push origin "$TAG_VERSION"
           
           # Output the tag for the next step
