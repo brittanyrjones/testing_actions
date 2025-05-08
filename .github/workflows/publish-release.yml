@@ -1,28 +1,20 @@
 name: Publish Release
 
 on:
+  workflow_dispatch:
   workflow_call:
     inputs:
       is_release_merge:
-        required: true
+        required: false
         type: boolean
+        default: false
       release_type:
-        required: true
-        type: string
-  workflow_dispatch:
-    inputs:
-      is_release_merge:
-        required: true
-        type: boolean
-        default: true
-      release_type:
-        required: true
+        required: false
         type: string
         default: 'stable'
 
 jobs:
-  publish-stable:
-    if: ${{ inputs.is_release_merge && inputs.release_type == 'stable' }}
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -64,4 +56,4 @@ jobs:
           draft: true
           prerelease: false
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,4 +1,4 @@
-name: Check and Publish
+name: Check for Release Merge Event
 
 on:
   push:
@@ -6,73 +6,27 @@ on:
       - main
 
 jobs:
-  check-and-trigger:
+  check-for-release-merge:
+    # Only run if this is a merge from a release branch
+    if: |
+      contains(github.event.head_commit.message, 'Merge pull request') &&
+      contains(github.event.head_commit.message, 'release-v')
     runs-on: ubuntu-latest
     steps:
-      - name: Check commit message
-        id: check
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit message and trigger appropriate workflow
         run: |
-          if [[ "${{ github.event.head_commit.message }}" == *"Merge pull request"* ]] && \
-             [[ "${{ github.event.head_commit.message }}" == *"release-v"* ]]; then
-            echo "is_release_merge=true" >> $GITHUB_OUTPUT
-            if [[ "${{ github.event.head_commit.message }}" == *"Beta Testing"* ]]; then
-              echo "release_type=beta" >> $GITHUB_OUTPUT
-            elif [[ "${{ github.event.head_commit.message }}" == *"Release Candidate"* ]]; then
-              echo "release_type=rc" >> $GITHUB_OUTPUT
-            elif [[ "${{ github.event.head_commit.message }}" == *"Release"* ]]; then
-              echo "release_type=stable" >> $GITHUB_OUTPUT
-            else
-              echo "release_type=none" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "is_release_merge=false" >> $GITHUB_OUTPUT
-            echo "release_type=none" >> $GITHUB_OUTPUT
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          
+          if [[ "$COMMIT_MSG" == *"Beta Testing"* ]]; then
+            echo "Triggering beta release workflow"
+            gh workflow run publish-pre-release.yml
+          elif [[ "$COMMIT_MSG" == *"Release"* ]]; then
+            echo "Triggering stable release workflow"
+            gh workflow run publish-release.yml
           fi
-
-      - name: Trigger beta publish workflow
-        if: steps.check.outputs.is_release_merge == 'true' && steps.check.outputs.release_type == 'beta'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'publish-pre-release.yml',
-              ref: context.ref,
-              inputs: {
-                is_release_merge: '${{ steps.check.outputs.is_release_merge }}',
-                release_type: '${{ steps.check.outputs.release_type }}'
-              }
-            })
-
-      - name: Trigger RC publish workflow
-        if: steps.check.outputs.is_release_merge == 'true' && steps.check.outputs.release_type == 'rc'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'publish-rc.yml',
-              ref: context.ref,
-              inputs: {
-                is_release_merge: '${{ steps.check.outputs.is_release_merge }}',
-                release_type: '${{ steps.check.outputs.release_type }}'
-              }
-            })
-
-      - name: Trigger stable publish workflow
-        if: steps.check.outputs.is_release_merge == 'true' && steps.check.outputs.release_type == 'stable'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'publish-stable.yml',
-              ref: context.ref,
-              inputs: {
-                is_release_merge: '${{ steps.check.outputs.is_release_merge }}',
-                release_type: '${{ steps.check.outputs.release_type }}'
-              }
-            }) 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

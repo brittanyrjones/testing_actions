@@ -1,15 +1,10 @@
 name: Create Stable Release Tag
 
-# Trigger on PR merge to main that affects version-related files
 on:
-  pull_request:
-    types: [closed]
-    branches:
-      - main
-    paths:
-      - 'pyproject.toml'
-      - 'CHANGELOG.md'
-      - 'hello_world/**'
+  push:
+    branches: [ "main" ]
+    tags: 
+      - "*"
 
 jobs:
   create-tag:

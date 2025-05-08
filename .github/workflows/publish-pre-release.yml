@@ -47,6 +47,30 @@ jobs:
           VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
+      # Create and push git tag
+      - name: Create and push tag
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+
+      # Create GitHub release
+      - name: Create draft release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "Beta Release v${{ steps.get_version.outputs.VERSION }}"
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          body_path: CHANGELOG.md
+          prerelease: true
+          draft: true
+          generate_release_notes: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz 
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       # Publish to TestPyPI
       - name: Publish to TestPyPI
         env:
@@ -55,14 +79,4 @@ jobs:
         run: |
           twine upload --repository testpypi dist/*
 
-      # Create GitHub Release
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: "Beta Release v${{ steps.get_version.outputs.VERSION }}"
-          body_path: CHANGELOG.md
-          draft: true
-          prerelease: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+   
