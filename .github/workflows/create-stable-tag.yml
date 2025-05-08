@@ -48,22 +48,42 @@ jobs:
           # Output the tag for the next step
           echo "tag=$TAG_VERSION" >> $GITHUB_OUTPUT
 
-      # Wait for publish workflow to complete
-      - name: Wait for publish workflow
-        uses: lewagon/wait-on-check-action@v1.3.1
+  publish:
+    needs: create-tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python 
+        uses: actions/setup-python@v3
         with:
-          ref: ${{ steps.create_tag.outputs.tag }}
-          check-name: 'Publish Release'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 10
+          python-version: '3.10'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install the project
+        run: uv sync --all-extras --dev
+      - name: Run Tests
+        run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
+      - name: Build the artifact in dist/
+        run: uv build
 
-      # Create draft GitHub release
-      - name: Create draft release
+      # Publish to PyPI
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+
+      # Create GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v$VERSION
+          name: "Release ${{ github.ref_name }}"
+          body_path: CHANGELOG.md
           draft: true
-          generate_release_notes: true
           files: |
             dist/*.whl
-            dist/*.tar.gz 
+            dist/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
