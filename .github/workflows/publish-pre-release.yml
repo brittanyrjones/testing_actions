@@ -3,8 +3,6 @@ name: Publish Pre-Release
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
     tags:
       - 'v*.*beta*'
       - 'v*beta*'
