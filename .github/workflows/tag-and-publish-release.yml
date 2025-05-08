@@ -75,8 +75,29 @@ jobs:
         run: uv sync --all-extras --dev
       - name: Run Tests
         run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
+
+      # Create temporary pyproject.toml for build
+      - name: Prepare build
+        run: |
+          # Get version from commit message
+          VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
+          echo "Using version: $VERSION"
+          
+          # Backup original pyproject.toml
+          cp pyproject.toml pyproject.toml.bak
+          # Update version in pyproject.toml
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+
       - name: Build the artifact in dist/
         run: uv build
+
+      # Restore original pyproject.toml
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ -f pyproject.toml.bak ]; then
+            mv pyproject.toml.bak pyproject.toml
+          fi
 
       # Get version from tag and format it according to PEP 440
       - name: Get version

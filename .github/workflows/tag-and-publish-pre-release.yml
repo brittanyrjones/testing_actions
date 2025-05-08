@@ -79,20 +79,16 @@ jobs:
       # Create temporary pyproject.toml for beta build
       - name: Prepare beta build
         run: |
-          VERSION="${{ needs.create-tag.outputs.version }}"
-          # Convert to PEP 440 format
-          if [[ $VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            VERSION="${BASH_REMATCH[1]}b0"
-          elif [[ $VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.beta([0-9]+)$ ]]; then
-            VERSION="${BASH_REMATCH[1]}b${BASH_REMATCH[2]}"
-          else
-            echo "Invalid version format: $VERSION"
-            exit 1
-          fi
+          # Get base version from branch name
+          BASE_VERSION="${{ needs.create-tag.outputs.version }}"
+          # Convert to PEP 440 beta format
+          PYPI_VERSION="${BASE_VERSION}b0"
+          echo "Converting version: $BASE_VERSION -> $PYPI_VERSION"
+          
           # Backup original pyproject.toml
           cp pyproject.toml pyproject.toml.bak
           # Update version in pyproject.toml
-          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+          sed -i "s/^version = \".*\"/version = \"$PYPI_VERSION\"/" pyproject.toml
 
       - name: Build the artifact in dist/
         run: uv build
