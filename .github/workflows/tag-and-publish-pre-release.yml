@@ -38,14 +38,14 @@ jobs:
           VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
           
           # For beta releases, find the latest beta number and increment
-          LATEST_BETA=$(git tag -l "v$VERSION.beta*" | sort -V | tail -n 1)
+          LATEST_BETA=$(git tag -l "v$VERSION-beta*" | sort -V | tail -n 1)
           if [[ -z "$LATEST_BETA" ]]; then
             BETA_NUM=1
           else
             BETA_NUM=$(echo "$LATEST_BETA" | grep -o 'beta[0-9]*' | cut -d'b' -f2)
             BETA_NUM=$((BETA_NUM + 1))
           fi
-          TAG_VERSION="$VERSION.beta$BETA_NUM"
+          TAG_VERSION="$VERSION-beta$BETA_NUM"
           TAG_MESSAGE="Beta Release v$TAG_VERSION"
           
           # Create and push tag
@@ -83,7 +83,7 @@ jobs:
           # Get base version from branch name
           BASE_VERSION="${{ needs.create-tag.outputs.version }}"
           # Convert to beta format (matching pyproject.toml format)
-          PYPI_VERSION="${BASE_VERSION}beta"
+          PYPI_VERSION="${BASE_VERSION}-beta"
           echo "Converting version: $BASE_VERSION -> $PYPI_VERSION"
           echo "version=$PYPI_VERSION" >> $GITHUB_ENV
           

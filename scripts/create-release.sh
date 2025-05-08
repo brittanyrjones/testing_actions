@@ -160,12 +160,15 @@ PATCH="${VERSION_PARTS[2]}"
 # Generate new version based on bump type
 case "$BUMP_TYPE" in
     major)
+        # Major version bump always resets minor and patch to 0
         NEW_VERSION="$((MAJOR + 1)).0.0"
         ;;
     minor)
+        # Minor version bump resets patch to 0
         NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
         ;;
     patch)
+        # Patch version bump only increments patch
         NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
         ;;
 esac
