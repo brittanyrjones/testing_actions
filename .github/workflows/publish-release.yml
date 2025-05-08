@@ -10,6 +10,9 @@ on:
       - '!beta-v*'
       - '!v*.*beta*'
 
+permissions:
+  contents: write
+  packages: write
 jobs:
   publish:
     runs-on: ubuntu-latest

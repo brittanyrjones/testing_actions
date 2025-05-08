@@ -5,9 +5,13 @@ on:
   workflow_call:
   push:
     tags:
-      - 'beta-v*'
-      - 'v*beta'
       - 'v*.*beta*'
+      - 'v*beta*'
+      - 'beta-v*'
+
+permissions:
+  contents: write
+  packages: write
 
 jobs:
   publish:
