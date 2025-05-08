@@ -1,28 +1,14 @@
-name: Publish Pre-release
+name: Publish Pre-Release
 
 on:
-  workflow_call:
-    inputs:
-      is_release_merge:
-        required: true
-        type: boolean
-      release_type:
-        required: true
-        type: string
   workflow_dispatch:
-    inputs:
-      is_release_merge:
-        required: true
-        type: boolean
-        default: true
-      release_type:
-        required: true
-        type: string
-        default: 'beta'
+  workflow_call:
+  push:
+    tags:
+      - 'v*.beta*'
 
 jobs:
-  publish-pre-release:
-    if: ${{ inputs.is_release_merge && inputs.release_type == 'beta' }}
+  publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,36 +26,13 @@ jobs:
       - name: Build the artifact in dist/
         run: uv build
 
-      # Get version from pyproject.toml
+      # Get version from tag
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+          # Remove 'v' prefix and get the version
+          VERSION=${GITHUB_REF#refs/tags/v}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-
-      # Create and push git tag
-      - name: Create and push tag
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git tag -a "v$VERSION" -m "Release v$VERSION"
-          git push origin "v$VERSION"
-
-      # Create GitHub release
-      - name: Create draft release
-        uses: softprops/action-gh-release@v1
-        with:
-          name: "Beta Release v${{ steps.get_version.outputs.VERSION }}"
-          tag_name: v${{ steps.get_version.outputs.VERSION }}
-          body_path: CHANGELOG.md
-          prerelease: true
-          draft: true
-          generate_release_notes: true
-          files: |
-            dist/*.whl
-            dist/*.tar.gz 
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Publish to TestPyPI
       - name: Publish to TestPyPI
@@ -77,6 +40,17 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
         run: |
-          twine upload --repository testpypi dist/*
+          twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
+      # Create GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "Beta Release v${{ steps.get_version.outputs.VERSION }}"
+          body_path: CHANGELOG.md
+          draft: true
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
    
