@@ -1,6 +1,6 @@
 [project]
 name = "bjones_testing_actions"
-version = "0.3.28"
+version = "0.3.29"
 description = "Simple test"
 readme = "README.md"
 requires-python = ">=3.10"
