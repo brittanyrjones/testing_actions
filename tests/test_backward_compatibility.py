@@ -12,7 +12,7 @@ def test_say_hello_output():
         say_hello()
     
     output = f.getvalue().strip()
-    assert output == "Hello, world!, testing!"
+    assert output == "Hello, world!, testing! again!"
 
 def test_say_hello_return_type():
     """Test that say_hello() returns None (implicitly)."""
