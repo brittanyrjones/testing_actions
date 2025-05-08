@@ -47,7 +47,11 @@ jobs:
       - name: Extract version info
         id: version
         run: |
-          echo "VERSION=${{ github.event.inputs.version }}-${{ github.event.inputs.release_type }}" >> $GITHUB_OUTPUT
+          # Ensure version is properly formatted
+          BASE_VERSION="${{ github.event.inputs.version }}"
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          VERSION="${BASE_VERSION}-${RELEASE_TYPE}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       # Create feature branch for the pre-release
       - name: Create release branch

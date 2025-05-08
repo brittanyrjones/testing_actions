@@ -135,6 +135,23 @@ jobs:
       - name: Build the artifact in dist/
         run: uv build
 
+      # Check if version exists on TestPyPI
+      - name: Check TestPyPI for existing version
+        id: check_testpypi
+        run: |
+          # Get the normalized version (convert -beta to b0)
+          PYPI_VERSION=$(echo "${{ needs.create-tag.outputs.version }}" | sed 's/-beta/b0/')
+          echo "Checking for version: $PYPI_VERSION"
+          
+          # Check if version exists
+          if curl -s "https://test.pypi.org/pypi/bjones_testing_actions/$PYPI_VERSION/json" | grep -q '"version":"'; then
+            echo "Version $PYPI_VERSION already exists on TestPyPI"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version $PYPI_VERSION does not exist on TestPyPI"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
       # Restore original files
       - name: Cleanup
         if: always()
@@ -146,8 +163,9 @@ jobs:
             mv CHANGELOG.md.bak CHANGELOG.md
           fi
 
-      # Publish to TestPyPI
+      # Publish to TestPyPI only if version doesn't exist
       - name: Publish to TestPyPI
+        if: steps.check_testpypi.outputs.exists != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/

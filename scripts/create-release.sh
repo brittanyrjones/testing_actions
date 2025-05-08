@@ -149,7 +149,7 @@ fi
 CURRENT_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
 
 # Remove any pre-release suffix for version calculation
-BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/[a-z].*$//')
+BASE_VERSION=$(echo "$CURRENT_VERSION" | sed 's/-[a-z].*$//')
 
 # Split version into components
 IFS='.' read -r -a VERSION_PARTS <<< "$BASE_VERSION"
@@ -175,9 +175,9 @@ esac
 
 # Add release type suffix if needed
 if [ "$RELEASE_TYPE" = "rc" ]; then
-    NEW_VERSION="${NEW_VERSION}rc1"
+    NEW_VERSION="${NEW_VERSION}-rc1"
 elif [ "$RELEASE_TYPE" = "beta" ]; then
-    NEW_VERSION="${NEW_VERSION}beta"
+    NEW_VERSION="${NEW_VERSION}-beta"
 fi
 
 echo "Current version: $CURRENT_VERSION"
@@ -203,19 +203,19 @@ if ! gh auth status &> /dev/null; then
 fi
 
 # Create new branch
-BRANCH_NAME="release-v$NEW_VERSION"
+BRANCH_NAME="release-v${NEW_VERSION}"
 git checkout -b "$BRANCH_NAME"
 
 # For beta releases, just create a PR without version changes
 if [ "$RELEASE_TYPE" = "beta" ]; then
     # Create an empty commit to establish the branch
-    git commit --allow-empty -m "Beta testing branch for v$NEW_VERSION"
+    git commit --allow-empty -m "Beta testing branch for v${NEW_VERSION}"
     git push origin "$BRANCH_NAME"
 
     # Create draft PR
     gh pr create \
-        --title "Beta Testing v$NEW_VERSION" \
-        --body "Beta testing branch for v$NEW_VERSION. No version changes in pyproject.toml as this is a temporary testing branch." \
+        --title "Beta Testing v${NEW_VERSION}" \
+        --body "Beta testing branch for v${NEW_VERSION}. No version changes in pyproject.toml as this is a temporary testing branch." \
         --base main \
         --head "$BRANCH_NAME" \
         --draft
