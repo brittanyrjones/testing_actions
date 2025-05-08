@@ -33,7 +33,9 @@ jobs:
       # Get version from tag
       - name: Get version
         id: get_version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_ENV
 
       # Only publish and create release if this is a tag push
       - name: Publish to TestPyPI
@@ -49,7 +51,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          name: "Beta Release v${{ steps.get_version.outputs.VERSION }}"
+          name: "Beta Release v${{ env.version }}"
           body_path: CHANGELOG.md
           draft: true
           prerelease: true
