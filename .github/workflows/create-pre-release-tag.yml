@@ -1,4 +1,4 @@
-name: Create Tag
+name: Create Pre-Release Tag
 
 on:
   push:
@@ -10,7 +10,8 @@ jobs:
     # Only run if this is a merge from a release branch
     if: |
       contains(github.event.head_commit.message, 'Merge pull request') &&
-      contains(github.event.head_commit.message, 'release-v')
+      contains(github.event.head_commit.message, 'release-v') &&
+      contains(github.event.head_commit.message, 'Beta')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
