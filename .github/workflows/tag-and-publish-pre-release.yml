@@ -81,7 +81,7 @@ jobs:
         run: |
           VERSION="${{ needs.create-tag.outputs.version }}"
           # Convert to PEP 440 format
-          if [[ $VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+)beta$ ]]; then
+          if [[ $VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             VERSION="${BASH_REMATCH[1]}b0"
           elif [[ $VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.beta([0-9]+)$ ]]; then
             VERSION="${BASH_REMATCH[1]}b${BASH_REMATCH[2]}"
@@ -101,7 +101,9 @@ jobs:
       - name: Cleanup
         if: always()
         run: |
-          mv pyproject.toml.bak pyproject.toml
+          if [ -f pyproject.toml.bak ]; then
+            mv pyproject.toml.bak pyproject.toml
+          fi
 
       # Get version from tag and format it according to PEP 440
       - name: Get version
