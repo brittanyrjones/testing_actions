@@ -39,4 +39,3 @@ deps =
 commands = 
     pytest tests/ -v --cov=hello_world --cov-report=term-missing
 """
-

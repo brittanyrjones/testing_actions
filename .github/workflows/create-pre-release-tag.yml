@@ -31,6 +31,7 @@ jobs:
 
       # Create and push tag
       - name: Create and push tag
+        id: create_tag
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
@@ -52,3 +53,15 @@ jobs:
           # Create and push tag
           git tag -a "v$TAG_VERSION" -m "$TAG_MESSAGE"
           git push origin "v$TAG_VERSION"
+          
+          # Output the tag for the next step
+          echo "tag=v$TAG_VERSION" >> $GITHUB_OUTPUT
+
+      # Wait for publish workflow to complete
+      - name: Wait for publish workflow
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ steps.create_tag.outputs.tag }}
+          check-name: 'Publish Pre-Release'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
