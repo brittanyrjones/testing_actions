@@ -42,7 +42,7 @@ jobs:
       - name: Get version
         id: get_version
         run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             # Remove 'v' prefix and get base version
             BASE_VERSION=${GITHUB_REF_NAME#v}
             # Convert to PEP 440 format (e.g., 0.3.25beta -> 0.3.25b0)
