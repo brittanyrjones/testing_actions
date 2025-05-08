@@ -1,8 +1,8 @@
 name: Create Pre-Release Tag
 
 on:
-  pull_request:
-    types: [closed]
+  workflow_dispatch:
+  push:
     branches:
       - main
 
@@ -10,8 +10,9 @@ jobs:
   create-tag:
     # Only run if this is a merge from a beta release branch
     if: |
-      github.event.pull_request.merged == true &&
-      contains(github.event.pull_request.head.ref, 'beta')
+      contains(github.event.head_commit.message, 'Merge pull request') &&
+      contains(github.event.head_commit.message, 'release-v') &&
+      contains(github.event.head_commit.message, 'beta')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,9 +35,17 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           
-          # Get version from branch name
-          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
+          # Get version from commit message
+          VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
           
+          # For beta releases, find the latest beta number and increment
+          LATEST_BETA=$(git tag -l "v$VERSION.beta*" | sort -V | tail -n 1)
+          if [[ -z "$LATEST_BETA" ]]; then
+            BETA_NUM=1
+          else
+            BETA_NUM=$(echo "$LATEST_BETA" | grep -o 'beta[0-9]*' | cut -d'b' -f2)
+            BETA_NUM=$((BETA_NUM + 1))
+          fi
           TAG_VERSION="$VERSION.beta$BETA_NUM"
           TAG_MESSAGE="Beta Release v$TAG_VERSION"
           

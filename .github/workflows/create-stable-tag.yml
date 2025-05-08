@@ -1,18 +1,18 @@
 name: Create Stable Tag
 
 on:
-  pull_request:
-    types: [closed]
+  workflow_dispatch:
+  push:
     branches:
       - main
 
 jobs:
   create-tag:
-    # Only run if this is a merge from a stable release branch
+    # Only run if this is a merge from a release branch
     if: |
-      github.event.pull_request.merged == true &&
-      contains(github.event.pull_request.head.ref, 'release-v') &&
-      !contains(github.event.pull_request.head.ref, 'beta')
+      contains(github.event.head_commit.message, 'Merge pull request') &&
+      contains(github.event.head_commit.message, 'release-v') &&
+      !contains(github.event.head_commit.message, 'beta')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,11 +26,11 @@ jobs:
       - name: Install the project
         run: uv sync --all-extras --dev
 
-      # Get version from branch name
+      # Get version from commit message
       - name: Get version
         id: get_version
         run: |
-          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
+          VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       # Create and push tag
