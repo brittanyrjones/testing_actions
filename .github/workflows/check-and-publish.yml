@@ -17,16 +17,42 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check commit message and trigger appropriate workflow
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
         run: |
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          python -m pip install --upgrade pip
+          pip install -e ".[test]"
+
+      # Get version from pyproject.toml
+      - name: Get version
+        id: get_version
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check branch name and create tag
+        run: |
+          # Extract source branch name from merge commit message
+          SOURCE_BRANCH=$(echo "${{ github.event.head_commit.message }}" | grep -o 'from .*' | cut -d' ' -f2)
           
-          if [[ "$COMMIT_MSG" == *"Beta Testing"* ]]; then
-            echo "Triggering beta release workflow"
-            gh workflow run publish-pre-release.yml
-          elif [[ "$COMMIT_MSG" == *"Release"* ]]; then
-            echo "Triggering stable release workflow"
-            gh workflow run publish-release.yml
+          if [[ "$SOURCE_BRANCH" == *"beta"* ]]; then
+            echo "Creating beta tag and triggering beta release workflow"
+            git config --global user.name "GitHub Actions"
+            git config --global user.email "actions@github.com"
+            # Create tag with prerelease flag
+            git tag -a "v${{ steps.get_version.outputs.VERSION }}" -m "Beta Release v${{ steps.get_version.outputs.VERSION }}" --annotate
+            git push origin "v${{ steps.get_version.outputs.VERSION }}"
+          elif [[ "$SOURCE_BRANCH" == *"release-v"* ]]; then
+            echo "Creating stable tag and triggering stable release workflow"
+            git config --global user.name "GitHub Actions"
+            git config --global user.email "actions@github.com"
+            git tag -a "v${{ steps.get_version.outputs.VERSION }}" -m "Release v${{ steps.get_version.outputs.VERSION }}"
+            git push origin "v${{ steps.get_version.outputs.VERSION }}"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
