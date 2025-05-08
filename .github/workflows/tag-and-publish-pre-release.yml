@@ -16,7 +16,7 @@ jobs:
     # Only run if this is a merge from a beta release branch
     if: |
       contains(github.event.head_commit.message, 'Merge pull request') &&
-      contains(github.event.head_commit.message, 'release-v') &&
+      contains(github.event.head_commit.message, 'Release') &&
       contains(github.event.head_commit.message, 'beta')
     runs-on: ubuntu-latest
     outputs:
@@ -36,6 +36,7 @@ jobs:
           
           # Get version from commit message
           VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
+          echo "Found version: $VERSION"
           
           # For beta releases, find the latest beta number and increment
           LATEST_BETA=$(git tag -l "v$VERSION-beta*" | sort -V | tail -n 1)
@@ -95,7 +96,7 @@ jobs:
           echo "Previous tag: $PREV_TAG"
           CURRENT_TAG="${{ needs.create-tag.outputs.tag }}"
           
-          # Generate release notes
+          # Generate release notes for changelog
           if [ -n "$PREV_TAG" ]; then
             echo "Generating notes from $PREV_TAG to $CURRENT_TAG"
             RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD)
@@ -103,11 +104,6 @@ jobs:
             echo "No previous tag found, using all commits"
             RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)")
           fi
-          
-          # Save release notes for GitHub release
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
           
           # Backup original files
           cp pyproject.toml pyproject.toml.bak
@@ -141,26 +137,16 @@ jobs:
         run: |
           # Get the normalized version (convert -beta to b0)
           PYPI_VERSION=$(echo "${{ needs.create-tag.outputs.version }}" | sed 's/-beta/b0/')
+          PACKAGE_NAME="bjones_testing_actions"
           echo "Checking for version: $PYPI_VERSION"
           
           # Check if version exists
-          if curl -s "https://test.pypi.org/pypi/bjones_testing_actions/$PYPI_VERSION/json" | grep -q '"version":"'; then
+          if curl -s "https://test.pypi.org/pypi/$PACKAGE_NAME/$PYPI_VERSION/json" | grep -q '"version":"'; then
             echo "Version $PYPI_VERSION already exists on TestPyPI"
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "Version $PYPI_VERSION does not exist on TestPyPI"
             echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      # Restore original files
-      - name: Cleanup
-        if: always()
-        run: |
-          if [ -f pyproject.toml.bak ]; then
-            mv pyproject.toml.bak pyproject.toml
-          fi
-          if [ -f CHANGELOG.md.bak ]; then
-            mv CHANGELOG.md.bak CHANGELOG.md
           fi
 
       # Publish to TestPyPI only if version doesn't exist
@@ -177,7 +163,6 @@ jobs:
         with:
           tag_name: v${{ needs.create-tag.outputs.tag }}
           name: "Beta Release v${{ needs.create-tag.outputs.tag }}"
-          body: ${{ steps.prepare_build.outputs.notes }}
           draft: false
           prerelease: true
           files: |

@@ -126,6 +126,40 @@ check_pyproject_docs() {
     fi
 }
 
+# Function to update all documentation
+update_documentation() {
+    local version=$1
+    local changes=$2
+    local categorized_changes=$3
+
+    # Update version in pyproject.toml
+    sed -i '' "s/^version = \".*\"/version = \"$version\"/" pyproject.toml
+
+    # Update CHANGELOG.md
+    {
+        echo "# Changelog"
+        echo ""
+        echo "All notable changes to this project will be documented in this file."
+        echo ""
+        echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
+        echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+        echo ""
+        echo "## [$version] - $(date +%Y-%m-%d)"
+        echo ""
+        echo "$categorized_changes"
+        echo ""
+    } > NEW_CHANGELOG.md
+
+    # If CHANGELOG.md exists, prepend new content
+    if [ -f CHANGELOG.md ]; then
+        cat CHANGELOG.md >> NEW_CHANGELOG.md
+    fi
+    mv NEW_CHANGELOG.md CHANGELOG.md
+
+    # Update README.md with version and changes
+    update_readme "$version" "$categorized_changes"
+}
+
 # Check if required arguments are provided
 if [ "$#" -lt 2 ] || [ "$#" -gt 3 ]; then
     usage
@@ -233,9 +267,6 @@ fi
 # Check PyPI documentation requirements
 check_pyproject_docs
 
-# Update version in pyproject.toml
-sed -i '' "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
-
 # Get last published tag
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 
@@ -243,29 +274,8 @@ LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 CHANGES=$(get_commit_messages "$LAST_TAG")
 CATEGORIZED_CHANGES=$(categorize_changes "$CHANGES")
 
-# Update CHANGELOG.md
-{
-    echo "# Changelog"
-    echo ""
-    echo "All notable changes to this project will be documented in this file."
-    echo ""
-    echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
-    echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
-    echo ""
-    echo "## [$NEW_VERSION] - $(date +%Y-%m-%d)"
-    echo ""
-    echo "$CATEGORIZED_CHANGES"
-    echo ""
-} > NEW_CHANGELOG.md
-
-# If CHANGELOG.md exists, prepend new content
-if [ -f CHANGELOG.md ]; then
-    cat CHANGELOG.md >> NEW_CHANGELOG.md
-fi
-mv NEW_CHANGELOG.md CHANGELOG.md
-
-# Update README.md with version and changes
-update_readme "$NEW_VERSION" "$CATEGORIZED_CHANGES"
+# Update all documentation
+update_documentation "$NEW_VERSION" "$CHANGES" "$CATEGORIZED_CHANGES"
 
 # Add all files for commit
 git add pyproject.toml README.md CHANGELOG.md

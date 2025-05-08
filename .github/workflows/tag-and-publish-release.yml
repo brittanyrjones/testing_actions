@@ -60,8 +60,11 @@ jobs:
   publish:
     needs: create-tag
     runs-on: ubuntu-latest
+    environment: pypi
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main  # Explicitly checkout main branch
       - name: Set up Python 
         uses: actions/setup-python@v3
         with:
@@ -75,61 +78,6 @@ jobs:
         run: uv sync --all-extras --dev
       - name: Run Tests
         run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
-
-      # Generate release notes and update changelog
-      - name: Prepare release
-        id: prepare_release
-        run: |
-          # Get version from commit message
-          VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
-          echo "Using version: $VERSION"
-          echo "version=$VERSION" >> $GITHUB_ENV
-          
-          # Get the previous tag
-          echo "Available tags:"
-          git tag -l "v*"
-          echo "Current tag: ${{ needs.create-tag.outputs.tag }}"
-          PREV_TAG=$(git tag -l "v*" | sort -V | grep -B1 "${{ needs.create-tag.outputs.tag }}" | head -n 1 || echo "")
-          echo "Previous tag: $PREV_TAG"
-          CURRENT_TAG="${{ needs.create-tag.outputs.tag }}"
-          
-          # Generate release notes
-          if [ -n "$PREV_TAG" ]; then
-            echo "Generating notes from $PREV_TAG to $CURRENT_TAG"
-            RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD)
-          else
-            echo "No previous tag found, using all commits"
-            RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)")
-          fi
-          
-          # Save release notes for GitHub release
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          
-          # Update version in pyproject.toml
-          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
-          
-          # Update CHANGELOG.md with new version and release notes
-          {
-            echo "# Changelog"
-            echo ""
-            echo "## [$VERSION] - $(date +%Y-%m-%d)"
-            echo ""
-            echo "$RELEASE_NOTES"
-            echo ""
-            if [ -f CHANGELOG.md ]; then
-              cat CHANGELOG.md
-            fi
-          } > CHANGELOG.md.new
-          mv CHANGELOG.md.new CHANGELOG.md
-          
-          # Commit changes to main
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git add pyproject.toml CHANGELOG.md
-          git commit -m "Update version to $VERSION and changelog"
-          git push
 
       - name: Build the artifact in dist/
         run: uv build
@@ -163,7 +111,6 @@ jobs:
         with:
           tag_name: ${{ needs.create-tag.outputs.tag }}
           name: "Release ${{ needs.create-tag.outputs.tag }}"
-          body: ${{ steps.prepare_release.outputs.notes }}
           draft: false
           prerelease: false
           files: |
