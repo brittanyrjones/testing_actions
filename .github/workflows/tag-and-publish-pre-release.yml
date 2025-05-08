@@ -88,7 +88,11 @@ jobs:
           echo "version=$PYPI_VERSION" >> $GITHUB_ENV
           
           # Get the previous tag
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          echo "Available tags:"
+          git tag -l "v*"
+          echo "Current tag: ${{ needs.create-tag.outputs.tag }}"
+          PREV_TAG=$(git tag -l "v*" | sort -V | grep -B1 "${{ needs.create-tag.outputs.tag }}" | head -n 1 || echo "")
+          echo "Previous tag: $PREV_TAG"
           CURRENT_TAG="${{ needs.create-tag.outputs.tag }}"
           
           # Generate release notes
