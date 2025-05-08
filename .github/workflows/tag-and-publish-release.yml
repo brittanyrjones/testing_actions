@@ -51,7 +51,7 @@ jobs:
           TAG_MESSAGE="Release v$TAG_VERSION"
           
           # Create and push tag
-          git tag -s "$TAG_VERSION" -m "$TAG_MESSAGE"
+          git tag -a "$TAG_VERSION" -m "$TAG_MESSAGE"
           git push origin "$TAG_VERSION"
           
           # Output the tag for the next step
@@ -76,6 +76,33 @@ jobs:
           cache-dependency-glob: "uv.lock"
       - name: Install the project
         run: uv sync --all-extras --dev
+
+      # Generate release notes
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          # Get the previous tag
+          echo "Available tags:"
+          git tag -l "v*"
+          echo "Current tag: ${{ needs.create-tag.outputs.tag }}"
+          PREV_TAG=$(git tag -l "v*" | sort -V | grep -B1 "${{ needs.create-tag.outputs.tag }}" | head -n 1 || echo "")
+          echo "Previous tag: $PREV_TAG"
+          CURRENT_TAG="${{ needs.create-tag.outputs.tag }}"
+          
+          # Generate release notes
+          if [ -n "$PREV_TAG" ]; then
+            echo "Generating notes from $PREV_TAG to $CURRENT_TAG"
+            RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD)
+          else
+            echo "No previous tag found, using all commits"
+            RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)")
+          fi
+          
+          # Save release notes for GitHub release
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Run Tests
         run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
 
@@ -111,7 +138,7 @@ jobs:
         with:
           tag_name: ${{ needs.create-tag.outputs.tag }}
           name: "Release ${{ needs.create-tag.outputs.tag }}"
-          generate_release_notes: true
+          body: ${{ steps.release_notes.outputs.notes }}
           draft: false
           prerelease: false
           files: |

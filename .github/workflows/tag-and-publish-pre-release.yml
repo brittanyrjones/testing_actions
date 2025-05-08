@@ -39,7 +39,7 @@ jobs:
           echo "Found version: $VERSION"
           
           # For beta releases, find the latest beta number and increment
-          LATEST_BETA=$(git tag -l "v$VERSION-beta*" | sort -V | tail -n 1)
+          LATEST_BETA=$(git tag -l "$VERSION-beta*" | sort -V | tail -n 1)
           if [[ -z "$LATEST_BETA" ]]; then
             BETA_NUM=1
           else
@@ -47,10 +47,10 @@ jobs:
             BETA_NUM=$((BETA_NUM + 1))
           fi
           TAG_VERSION="$VERSION-beta$BETA_NUM"
-          TAG_MESSAGE="Beta Release v$TAG_VERSION"
+          TAG_MESSAGE="Beta Release $TAG_VERSION"
           
           # Create and push tag
-          git tag -s "$TAG_VERSION" -m "$TAG_MESSAGE"
+          git tag -a "$TAG_VERSION" -m "$TAG_MESSAGE"
           git push origin "$TAG_VERSION"
           
           # Output the tag and version for the next step
@@ -96,7 +96,7 @@ jobs:
           echo "Previous tag: $PREV_TAG"
           CURRENT_TAG="${{ needs.create-tag.outputs.tag }}"
           
-          # Generate release notes for changelog
+          # Generate release notes for changelog and release
           if [ -n "$PREV_TAG" ]; then
             echo "Generating notes from $PREV_TAG to $CURRENT_TAG"
             RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD)
@@ -104,6 +104,11 @@ jobs:
             echo "No previous tag found, using all commits"
             RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)")
           fi
+          
+          # Save release notes for GitHub release
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
           
           # Backup original files
           cp pyproject.toml pyproject.toml.bak
@@ -163,7 +168,7 @@ jobs:
         with:
           tag_name: ${{ needs.create-tag.outputs.tag }}
           name: "Beta Release ${{ needs.create-tag.outputs.tag }}"
-          generate_release_notes: true
+          body: ${{ steps.prepare_build.outputs.notes }}
           draft: false
           prerelease: true
           files: |
