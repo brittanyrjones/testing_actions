@@ -4,9 +4,11 @@ on:
   workflow_dispatch:
   workflow_call:
   push:
+    branches:
+      - main
     tags:
-      - 'v*beta*'
       - 'beta-v*'
+      - 'v*beta'
       - 'v*.*beta*'
 
 jobs:
@@ -28,16 +30,22 @@ jobs:
       - name: Build the artifact in dist/
         run: uv build
 
-      # Get version from tag
+      # Get version from tag or commit message
       - name: Get version
         id: get_version
         run: |
-          # Remove 'v' prefix and get the version
-          VERSION=${GITHUB_REF#refs/tags/v}
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            # Remove 'v' prefix and get the version from tag
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            # Extract version from commit message for validation
+            VERSION=$(git log -1 --pretty=%B | grep -o 'v[0-9]\+\.[0-9]\+\.[0-9]\+.*beta' | sed 's/^v//')
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
-      # Publish to TestPyPI
+      # Only publish and create release if this is a tag push
       - name: Publish to TestPyPI
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
@@ -46,6 +54,7 @@ jobs:
 
       # Create GitHub Release
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           name: "Beta Release v${{ steps.get_version.outputs.VERSION }}"
