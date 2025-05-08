@@ -87,20 +87,59 @@ jobs:
           echo "Converting version: $BASE_VERSION -> $PYPI_VERSION"
           echo "version=$PYPI_VERSION" >> $GITHUB_ENV
           
-          # Backup original pyproject.toml
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          CURRENT_TAG="${{ needs.create-tag.outputs.tag }}"
+          
+          # Generate release notes
+          if [ -n "$PREV_TAG" ]; then
+            echo "Generating notes from $PREV_TAG to $CURRENT_TAG"
+            RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD)
+          else
+            echo "No previous tag found, using all commits"
+            RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)")
+          fi
+          
+          # Save release notes for GitHub release
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Backup original files
           cp pyproject.toml pyproject.toml.bak
+          if [ -f CHANGELOG.md ]; then
+            cp CHANGELOG.md CHANGELOG.md.bak
+          fi
+          
           # Update version in pyproject.toml
           sed -i "s/^version = \".*\"/version = \"$PYPI_VERSION\"/" pyproject.toml
+          
+          # Update CHANGELOG.md with new version and release notes
+          {
+            echo "# Changelog"
+            echo ""
+            echo "## [$PYPI_VERSION] - $(date +%Y-%m-%d)"
+            echo ""
+            echo "$RELEASE_NOTES"
+            echo ""
+            if [ -f CHANGELOG.md ]; then
+              cat CHANGELOG.md
+            fi
+          } > CHANGELOG.md.new
+          mv CHANGELOG.md.new CHANGELOG.md
 
       - name: Build the artifact in dist/
         run: uv build
 
-      # Restore original pyproject.toml
+      # Restore original files
       - name: Cleanup
         if: always()
         run: |
           if [ -f pyproject.toml.bak ]; then
             mv pyproject.toml.bak pyproject.toml
+          fi
+          if [ -f CHANGELOG.md.bak ]; then
+            mv CHANGELOG.md.bak CHANGELOG.md
           fi
 
       # Publish to TestPyPI
@@ -114,9 +153,9 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ needs.create-tag.outputs.tag }}
-          name: "Beta Release ${{ needs.create-tag.outputs.tag }}"
-          body: "Beta Release ${{ needs.create-tag.outputs.tag }}"
+          tag_name: v${{ needs.create-tag.outputs.tag }}
+          name: "Beta Release v${{ needs.create-tag.outputs.tag }}"
+          body: ${{ steps.prepare_build.outputs.notes }}
           draft: false
           prerelease: true
           files: |

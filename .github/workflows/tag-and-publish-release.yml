@@ -76,30 +76,59 @@ jobs:
       - name: Run Tests
         run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
 
-      # Create temporary pyproject.toml for build
-      - name: Prepare build
-        id: prepare_build
+      # Generate release notes and update changelog
+      - name: Prepare release
+        id: prepare_release
         run: |
           # Get version from commit message
           VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
           echo "Using version: $VERSION"
           echo "version=$VERSION" >> $GITHUB_ENV
           
-          # Backup original pyproject.toml
-          cp pyproject.toml pyproject.toml.bak
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          CURRENT_TAG="${{ needs.create-tag.outputs.tag }}"
+          
+          # Generate release notes
+          if [ -n "$PREV_TAG" ]; then
+            echo "Generating notes from $PREV_TAG to $CURRENT_TAG"
+            RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD)
+          else
+            echo "No previous tag found, using all commits"
+            RELEASE_NOTES=$(git log --pretty=format:"- %s (%h)")
+          fi
+          
+          # Save release notes for GitHub release
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
           # Update version in pyproject.toml
           sed -i "s/^version = \".*\"/version = \"$VERSION\"/" pyproject.toml
+          
+          # Update CHANGELOG.md with new version and release notes
+          {
+            echo "# Changelog"
+            echo ""
+            echo "## [$VERSION] - $(date +%Y-%m-%d)"
+            echo ""
+            echo "$RELEASE_NOTES"
+            echo ""
+            if [ -f CHANGELOG.md ]; then
+              cat CHANGELOG.md
+            fi
+          } > CHANGELOG.md.new
+          mv CHANGELOG.md.new CHANGELOG.md
+          
+          # Commit changes to main
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add pyproject.toml CHANGELOG.md
+          git commit -m "Update version to $VERSION and changelog"
+          git push
 
       - name: Build the artifact in dist/
         run: uv build
-
-      # Restore original pyproject.toml
-      - name: Cleanup
-        if: always()
-        run: |
-          if [ -f pyproject.toml.bak ]; then
-            mv pyproject.toml.bak pyproject.toml
-          fi
 
       # Publish to PyPI
       - name: Publish to PyPI
@@ -113,7 +142,7 @@ jobs:
         with:
           tag_name: ${{ needs.create-tag.outputs.tag }}
           name: "Release ${{ needs.create-tag.outputs.tag }}"
-          body: "Release ${{ needs.create-tag.outputs.tag }}"
+          body: ${{ steps.prepare_release.outputs.notes }}
           draft: false
           prerelease: false
           files: |
