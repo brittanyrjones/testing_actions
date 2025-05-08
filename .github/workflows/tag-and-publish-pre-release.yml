@@ -78,12 +78,14 @@ jobs:
 
       # Create temporary pyproject.toml for beta build
       - name: Prepare beta build
+        id: prepare_build
         run: |
           # Get base version from branch name
           BASE_VERSION="${{ needs.create-tag.outputs.version }}"
-          # Convert to PEP 440 beta format
-          PYPI_VERSION="${BASE_VERSION}b0"
+          # Convert to beta format (matching pyproject.toml format)
+          PYPI_VERSION="${BASE_VERSION}beta"
           echo "Converting version: $BASE_VERSION -> $PYPI_VERSION"
+          echo "version=$PYPI_VERSION" >> $GITHUB_ENV
           
           # Backup original pyproject.toml
           cp pyproject.toml pyproject.toml.bak
@@ -100,23 +102,6 @@ jobs:
           if [ -f pyproject.toml.bak ]; then
             mv pyproject.toml.bak pyproject.toml
           fi
-
-      # Get version from tag and format it according to PEP 440
-      - name: Get version
-        id: get_version
-        run: |
-          # Use the version from create-tag job
-          VERSION="${{ needs.create-tag.outputs.version }}"
-          # Convert to PEP 440 format
-          if [[ $VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+)beta$ ]]; then
-            VERSION="${BASH_REMATCH[1]}b0"
-          elif [[ $VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.beta([0-9]+)$ ]]; then
-            VERSION="${BASH_REMATCH[1]}b${BASH_REMATCH[2]}"
-          else
-            echo "Invalid version format: $VERSION"
-            exit 1
-          fi
-          echo "version=$VERSION" >> $GITHUB_ENV
 
       # Publish to TestPyPI
       - name: Publish to TestPyPI
