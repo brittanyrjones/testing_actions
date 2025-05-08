@@ -9,6 +9,16 @@ on:
       release_type:
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      is_release_merge:
+        required: true
+        type: boolean
+        default: true
+      release_type:
+        required: true
+        type: string
+        default: 'rc'
 
 jobs:
   publish-rc:
