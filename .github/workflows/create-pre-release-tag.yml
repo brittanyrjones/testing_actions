@@ -1,17 +1,17 @@
 name: Create Pre-Release Tag
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
       - main
 
 jobs:
   create-tag:
-    # Only run if this is a merge from a release branch
+    # Only run if this is a merge from a beta release branch
     if: |
-      contains(github.event.head_commit.message, 'Merge pull request') &&
-      contains(github.event.head_commit.message, 'release-v') &&
-      contains(github.event.head_commit.message, 'Beta')
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.head.ref, 'beta')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,27 +34,12 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           
-          # Extract source branch name and version from merge commit message
-          SOURCE_BRANCH=$(echo "${{ github.event.head_commit.message }}" | grep -o 'from .*' | cut -d' ' -f2)
-          VERSION=$(echo "$SOURCE_BRANCH" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
+          # Get version from branch name
+          VERSION=$(echo "${{ github.event.pull_request.head.ref }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
           
-          if [[ "$SOURCE_BRANCH" == *"beta"* ]]; then
-            # For beta releases, find the latest beta number and increment
-            LATEST_BETA=$(git tag -l "v$VERSION.beta*" | sort -V | tail -n 1)
-            if [[ -z "$LATEST_BETA" ]]; then
-              BETA_NUM=1
-            else
-              BETA_NUM=$(echo "$LATEST_BETA" | grep -o 'beta[0-9]*' | cut -d'b' -f2)
-              BETA_NUM=$((BETA_NUM + 1))
-            fi
-            TAG_VERSION="$VERSION.beta$BETA_NUM"
-            TAG_MESSAGE="Beta Release v$TAG_VERSION"
-          else
-            # For stable releases, use version as is
-            TAG_VERSION="$VERSION"
-            TAG_MESSAGE="Release v$VERSION"
-          fi
+          TAG_VERSION="$VERSION.beta$BETA_NUM"
+          TAG_MESSAGE="Beta Release v$TAG_VERSION"
           
           # Create and push tag
           git tag -a "v$TAG_VERSION" -m "$TAG_MESSAGE"
-          git push origin "v$TAG_VERSION" 
+          git push origin "v$TAG_VERSION"

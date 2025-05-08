@@ -13,9 +13,12 @@ on:
 permissions:
   contents: write
   packages: write
+  id-token: write  # Required for PyPI publishing
+
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: testpypi  # Optional: if you have environment secrets
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 
