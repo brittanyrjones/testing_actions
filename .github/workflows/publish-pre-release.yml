@@ -30,11 +30,21 @@ jobs:
       - name: Build the artifact in dist/
         run: uv build
 
-      # Get version from tag
+      # Get version from tag and format it according to PEP 440
       - name: Get version
         id: get_version
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
+          # Remove 'v' prefix and get base version
+          BASE_VERSION=${GITHUB_REF_NAME#v}
+          # Convert to PEP 440 format (e.g., 0.3.25beta -> 0.3.25b0)
+          if [[ $BASE_VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+)beta$ ]]; then
+            VERSION="${BASH_REMATCH[1]}b0"
+          elif [[ $BASE_VERSION =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.beta([0-9]+)$ ]]; then
+            VERSION="${BASH_REMATCH[1]}b${BASH_REMATCH[2]}"
+          else
+            echo "Invalid version format: $BASE_VERSION"
+            exit 1
+          fi
           echo "version=$VERSION" >> $GITHUB_ENV
 
       # Only publish and create release if this is a tag push
