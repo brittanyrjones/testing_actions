@@ -32,13 +32,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download build artifacts
-        uses: dawidd6/action-download-artifact@v2
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          workflow: build-and-test.yml
-          name: dist
-          path: dist
-          run_id: ${{ github.sha }}
+          python-version: "3.13"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Build package
+        run: |
+          uv pip install build
+          python -m build
 
       - name: Generate new version
         id: version
