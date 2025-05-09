@@ -51,8 +51,8 @@ jobs:
             # Use version from workflow dispatch input
             VERSION="${{ github.event.inputs.version }}"
             if [ -z "$VERSION" ]; then
-              # If no version provided, get from package
-              VERSION=$(python -c 'import bjones_testing_actions; print(bjones_testing_actions.__version__)')
+              # If no version provided, get from pyproject.toml
+              VERSION=$(python -c 'import tomli; print(tomli.load(open("pyproject.toml", "rb"))["project"]["version"])')
             fi
             IS_PRERELEASE="${{ github.event.inputs.is_prerelease }}"
           else
@@ -65,8 +65,8 @@ jobs:
                 IS_PRERELEASE=false
               fi
             else
-              # For branch pushes, get version from package
-              VERSION=$(python -c 'import bjones_testing_actions; print(bjones_testing_actions.__version__)')
+              # For branch pushes, get version from pyproject.toml
+              VERSION=$(python -c 'import tomli; print(tomli.load(open("pyproject.toml", "rb"))["project"]["version"])')
               IS_PRERELEASE=false
             fi
           fi
