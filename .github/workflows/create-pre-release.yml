@@ -95,6 +95,13 @@ jobs:
       - name: Build package
         run: python -m build
 
+      # Get last tag
+      - name: Get last tag
+        id: last_tag
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          echo "LAST_TAG=$LAST_TAG" >> $GITHUB_OUTPUT
+
       # Create PR for review
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
