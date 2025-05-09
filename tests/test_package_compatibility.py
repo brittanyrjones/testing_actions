@@ -45,10 +45,20 @@ def install_version(version):
     
     python_path = create_venv(venv_path)
     
+    # Install uv in the virtual environment
+    subprocess.run([
+        python_path,
+        "-m",
+        "pip",
+        "install",
+        "uv"
+    ], check=True)
+    
     # Install aiohttp first
     subprocess.run([
         python_path,
         "-m",
+        "uv",
         "pip",
         "install",
         "aiohttp>=3.11.12"
@@ -58,6 +68,7 @@ def install_version(version):
     subprocess.run([
         python_path,
         "-m",
+        "uv",
         "pip",
         "install",
         "--index-url",
@@ -124,7 +135,7 @@ def test_say_hello_module_import():
 
 def uninstall_package():
     """Uninstall the package."""
-    subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "bjones_testing_actions"], check=True)
+    subprocess.run([sys.executable, "-m", "uv", "pip", "uninstall", "-y", "bjones_testing_actions"], check=True)
 
 @pytest.mark.parametrize("version", get_available_versions())
 def test_package_compatibility(version):
