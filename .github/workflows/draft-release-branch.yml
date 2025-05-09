@@ -66,6 +66,12 @@ jobs:
           echo "Bump type: $BUMP_TYPE"
           echo "Release type: $RELEASE_TYPE"
           
+          # If no previous version provided, get it from pyproject.toml
+          if [ -z "$PREV_VERSION" ]; then
+            PREV_VERSION=$(grep '^version = ' pyproject.toml | sed 's/version = "\(.*\)"/\1/')
+            echo "Got version from pyproject.toml: $PREV_VERSION"
+          fi
+          
           # Split version into components
           IFS='.' read -r -a VERSION_PARTS <<< "$PREV_VERSION"
           MAJOR="${VERSION_PARTS[0]}"
@@ -104,10 +110,11 @@ jobs:
 
       - name: Create release branch
         run: |
-          echo "Creating branch: release-v${{ steps.version.outputs.VERSION }}"
+          BRANCH_NAME="release-v${{ steps.version.outputs.VERSION }}"
+          echo "Creating branch: $BRANCH_NAME"
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git checkout -b "release-v${{ steps.version.outputs.VERSION }}"
+          git checkout -b "$BRANCH_NAME"
 
       - name: Update version in pyproject.toml
         if: steps.version.outputs.RELEASE_TYPE == 'stable'
@@ -156,7 +163,7 @@ jobs:
         run: |
           git add -A ':!.coverage'
           git commit -m "${{ steps.version.outputs.RELEASE_TYPE == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.VERSION }}"
-          git push -u origin "release-v${{ steps.version.outputs.VERSION }}"
+          git push -u origin "$BRANCH_NAME"
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
@@ -173,6 +180,6 @@ jobs:
             - Created release notes
             - Updated documentation
             - Using pre-built and tested package
-          branch: "release-v${{ steps.version.outputs.VERSION }}"
+          branch: "$BRANCH_NAME"
           base: main
           draft: true 
