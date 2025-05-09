@@ -26,13 +26,13 @@ def get_available_versions():
 def create_venv(venv_path):
     """Create a virtual environment at the specified path."""
     venv.create(venv_path, with_pip=True)
-    
+
     # Get the Python executable path for this venv
     if sys.platform == "win32":
         python_path = os.path.join(venv_path, "Scripts", "python.exe")
     else:
         python_path = os.path.join(venv_path, "bin", "python")
-    
+
     return python_path
 
 def install_version(version):
@@ -75,6 +75,8 @@ def install_version(version):
         "https://test.pypi.org/simple/",
         "--extra-index-url",
         "https://pypi.org/simple/",
+        "--index-strategy",
+        "unsafe-best-match",
         f"bjones-testing-actions=={version}"
     ], check=True)
     
@@ -103,7 +105,7 @@ def test_say_hello_output():
     f = io.StringIO()
     with redirect_stdout(f):
         say_hello()
-    
+
     output = f.getvalue().strip()
     assert output == "Hello, world!, testing! again!"
 
@@ -131,11 +133,11 @@ def test_say_hello_module_import():
     """Test that the module can be imported."""
     import hello_world
     assert hasattr(hello_world, 'say_hello')
-    assert callable(hello_world.say_hello) 
+    assert callable(hello_world.say_hello)
 
 def uninstall_package():
     """Uninstall the package."""
-    subprocess.run([sys.executable, "-m", "uv", "pip", "uninstall", "-y", "bjones-testing-actions"], check=True)
+    subprocess.run([sys.executable, "-m", "uv", "pip", "uninstall", "bjones-testing-actions"], check=True)
 
 @pytest.mark.parametrize("version", get_available_versions())
 def test_package_compatibility(version):
@@ -143,7 +145,7 @@ def test_package_compatibility(version):
     try:
         # Install specific version in a fresh venv
         python_path = install_version(version)
-        
+
         # Test 1: Module structure and basic functionality
         test_code = """
 import hello_world
@@ -175,9 +177,9 @@ except TypeError:
 """
         result = run_test_in_venv(python_path, test_code)
         assert result.returncode == 0, f"Tests failed for version {version}:\nstdout: {result.stdout}\nstderr: {result.stderr}"
-        
+
     finally:
         # Clean up
         cleanup_venv()
         # Always uninstall the package after the test
-        uninstall_package() 
+        uninstall_package()
