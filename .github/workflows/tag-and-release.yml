@@ -39,6 +39,13 @@ jobs:
         with:
           fetch-depth: 0
           ref: main
+          fetch-tags: true
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git config --global --add safe.directory /github/workspace
 
       - name: Get version info
         id: version_info
@@ -81,10 +88,15 @@ jobs:
 
       - name: Create and push tag
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git tag -a "v${{ steps.version_info.outputs.version }}" -m "${{ steps.version_info.outputs.changelog }}"
-          git push origin "v${{ steps.version_info.outputs.version }}"
+          # Ensure we're on main branch
+          git checkout main
+          git pull origin main
+          
+          TAG_NAME="v${{ steps.version_info.outputs.version }}"
+          echo "Creating tag: $TAG_NAME"
+          git tag -a "$TAG_NAME" -m "${{ steps.version_info.outputs.changelog }}"
+          echo "Pushing tag to origin..."
+          git push origin "$TAG_NAME"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
