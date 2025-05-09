@@ -89,6 +89,7 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git checkout -b "release-v${{ steps.version.outputs.VERSION }}"
+          git add .
           git commit --allow-empty -m "Beta testing branch for v${{ steps.version.outputs.VERSION }}"
           git push -u origin "release-v${{ steps.version.outputs.VERSION }}"
 
@@ -112,15 +113,15 @@ jobs:
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Pre-release v${{ steps.version.outputs.VERSION }}"
-          title: "Pre-release v${{ steps.version.outputs.VERSION }}"
+          commit-message: "Beta Testing v${{ steps.version.outputs.VERSION }}"
+          title: "Beta Testing v${{ steps.version.outputs.VERSION }}"
           body: |
-            Pre-release version bump and documentation updates.
+            Beta Testing version bump and documentation updates.
             
             Changes:
             - Built package
-            - No version update in main branch in pyproject.toml for pre-release
-            - No documentation updates in main branch required for pre-release
+            - No version update in main branch in pyproject.toml for beta release
+            - No documentation updates in main branch required for beta release
           branch: "release-v${{ steps.version.outputs.VERSION }}"
           base: main
           draft: true 
