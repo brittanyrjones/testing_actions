@@ -99,8 +99,13 @@ jobs:
           fi
           
           echo "Generated version: $VERSION"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "RELEASE_TYPE=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Debug version output
+        run: |
+          echo "Version from previous step: ${{ steps.version.outputs.version }}"
+          echo "Release type from previous step: ${{ steps.version.outputs.release_type }}"
 
       - name: Get last tag
         id: last_tag
@@ -110,22 +115,22 @@ jobs:
 
       - name: Create release branch
         run: |
-          BRANCH_NAME="release-v${{ steps.version.outputs.VERSION }}"
+          BRANCH_NAME="release-v${{ steps.version.outputs.version }}"
           echo "Creating branch: $BRANCH_NAME"
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git checkout -b "$BRANCH_NAME"
 
       - name: Update version in pyproject.toml
-        if: steps.version.outputs.RELEASE_TYPE == 'stable'
+        if: steps.version.outputs.release_type == 'stable'
         run: |
-          sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.VERSION }}\"/" pyproject.toml
+          sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.version }}\"/" pyproject.toml
 
       - name: Generate changelog
         run: |
           # Create new changelog entry
           {
-            echo "## [${{ steps.version.outputs.VERSION }}] - $(date +%Y-%m-%d)"
+            echo "## [${{ steps.version.outputs.version }}] - $(date +%Y-%m-%d)"
             echo ""
             if [ -n "${{ steps.last_tag.outputs.LAST_TAG }}" ]; then
               git log --graph --format="%h %s" "${{ steps.last_tag.outputs.LAST_TAG }}..HEAD"
@@ -162,20 +167,20 @@ jobs:
       - name: Commit and push changes
         run: |
           git add -A ':!.coverage'
-          git commit -m "${{ steps.version.outputs.RELEASE_TYPE == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.VERSION }}"
+          git commit -m "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.version }}"
           git push -u origin "$BRANCH_NAME"
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "${{ steps.version.outputs.RELEASE_TYPE == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.VERSION }}"
-          title: "${{ steps.version.outputs.RELEASE_TYPE == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.VERSION }}"
+          commit-message: "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.version }}"
+          title: "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.version }}"
           body: |
-            ${{ steps.version.outputs.RELEASE_TYPE == 'stable' && 'Stable' || 'Pre-release' }} version bump and documentation updates.
+            ${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} version bump and documentation updates.
             
             Changes:
-            - Updated version to ${{ steps.version.outputs.VERSION }}
+            - Updated version to ${{ steps.version.outputs.version }}
             - Generated changelog
             - Created release notes
             - Updated documentation
