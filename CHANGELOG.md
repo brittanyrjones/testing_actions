@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.32] - 2025-05-09
+
+* 14d12a8 test
+* 56a4a37 tesing
+* 5b08949 tesing
+
 ## [0.3.31] - 2025-05-09
 
 * 090d058 tesing
