@@ -126,7 +126,13 @@ jobs:
           git config --global user.email "actions@github.com"
           git checkout -b "$BRANCH_NAME"
 
+      - name: Update version in pyproject.toml
+        if: steps.version.outputs.release_type == 'stable'
+        run: |
+          sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.version }}\"/" pyproject.toml
+
       - name: Generate changelog
+        if: steps.version.outputs.release_type == 'stable'
         run: |
           # Create new changelog entry
           {
@@ -164,24 +170,17 @@ jobs:
           fi
           rm CHANGELOG.md.new
 
-      - name: Update version in pyproject.toml
-        if: steps.version.outputs.release_type == 'stable'
-        run: |
-          sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.version }}\"/" pyproject.toml
-
       - name: Commit and push changes
         id: commit
         run: |
-          # Remove any .coverage files
-          find . -name ".coverage" -type f -delete
-          find . -name ".coverage.*" -type f -delete
-          
-          # Add all files except .coverage
-          git add .
-          git reset -- .coverage .coverage.*
-          
-          # Create commit with proper message
-          git commit -m "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.version }}"
+          if [ "${{ steps.version.outputs.release_type }}" == "stable" ]; then
+            # For stable releases, commit changelog and version updates
+            git add CHANGELOG.md pyproject.toml
+            git commit -m "Stable v${{ steps.version.outputs.version }}"
+          else
+            # For non-stable releases, create an empty commit
+            git commit --allow-empty -m "Pre-release v${{ steps.version.outputs.version }}"
+          fi
           
           # Push to the branch
           BRANCH_NAME="release-v${{ steps.version.outputs.version }}"
@@ -189,20 +188,9 @@ jobs:
           git push -u origin "$BRANCH_NAME"
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.version }}"
-          title: "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.version }}"
-          body: |
-            ${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} version bump and documentation updates.
-            
-            Changes:
-            - Updated version to ${{ steps.version.outputs.version }}
-            - Generated changelog
-            - Created release notes
-            - Updated documentation
-            - Using pre-built and tested package
-          branch: "${{ steps.commit.outputs.branch_name }}"
-          base: main
-          draft: true 
+        run: |
+          # Get the branch name from the previous step
+          BRANCH_NAME="${{ steps.commit.outputs.branch_name }}"
+          
+          # Create PR using GitHub CLI
+          gh pr create --title "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.version }}" --body "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} version bump and documentation updates." --base main --head "$BRANCH_NAME" --draft
