@@ -6,7 +6,6 @@ import urllib.request
 from contextlib import redirect_stdout
 from hello_world import say_hello
 import subprocess
-import venv
 import os
 from pathlib import Path
 
@@ -25,7 +24,13 @@ def get_available_versions():
 
 def create_venv(venv_path):
     """Create a virtual environment at the specified path."""
-    venv.create(venv_path, with_pip=True)
+    subprocess.run([
+        sys.executable,
+        "-m",
+        "uv",
+        "venv",
+        str(venv_path)
+    ], check=True)
 
     # Get the Python executable path for this venv
     if sys.platform == "win32":
@@ -42,35 +47,30 @@ def install_version(version):
     if venv_path.exists():
         import shutil
         shutil.rmtree(venv_path)
-    
+
     python_path = create_venv(venv_path)
-    
-    # Install uv in the virtual environment
-    subprocess.run([
-        python_path,
-        "-m",
-        "pip",
-        "install",
-        "uv"
-    ], check=True)
-    
+
     # Install aiohttp first
     subprocess.run([
-        python_path,
+        sys.executable,
         "-m",
         "uv",
         "pip",
         "install",
+        "--target",
+        str(venv_path / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"),
         "aiohttp>=3.11.12"
     ], check=True)
-    
+
     # Then install our package
     subprocess.run([
-        python_path,
+        sys.executable,
         "-m",
         "uv",
         "pip",
         "install",
+        "--target",
+        str(venv_path / "lib" / f"python{sys.version_info.major}.{sys.version_info.minor}" / "site-packages"),
         "--index-url",
         "https://test.pypi.org/simple/",
         "--extra-index-url",
@@ -79,7 +79,7 @@ def install_version(version):
         "unsafe-best-match",
         f"bjones-testing-actions=={version}"
     ], check=True)
-    
+
     return python_path
 
 def run_test_in_venv(python_path, test_code):
