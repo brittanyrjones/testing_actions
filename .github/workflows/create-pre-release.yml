@@ -87,6 +87,8 @@ jobs:
       - name: Create release branch
         run: |
           git checkout -b "release-v${{ steps.version.outputs.VERSION }}"
+          git commit --allow-empty -m "Beta testing branch for v${{ steps.version.outputs.VERSION }}"
+          git push -u origin "release-v${{ steps.version.outputs.VERSION }}"
 
       # Run tests to ensure quality
       - name: Run tests
