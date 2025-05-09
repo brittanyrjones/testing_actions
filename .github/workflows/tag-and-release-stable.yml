@@ -57,7 +57,7 @@ jobs:
           # Output the tag for the next step
           echo "tag=$TAG_VERSION" >> $GITHUB_OUTPUT
 
-  publish:
+  release-stable:
     needs: create-tag
     runs-on: ubuntu-latest
     environment: pypi
@@ -108,29 +108,6 @@ jobs:
 
       - name: Build the artifact in dist/
         run: uv build
-
-      # Check if version exists on PyPI
-      - name: Check PyPI for existing version
-        id: check_pypi
-        run: |
-          PACKAGE_NAME="bjones_testing_actions"
-          echo "Checking for version: ${{ needs.create-tag.outputs.tag }}"
-          
-          # Check if version exists
-          if curl -s "https://pypi.org/pypi/$PACKAGE_NAME/${{ needs.create-tag.outputs.tag }}/json" | grep -q '"version":"'; then
-            echo "Version ${{ needs.create-tag.outputs.tag }} already exists on PyPI"
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "Version ${{ needs.create-tag.outputs.tag }} does not exist on PyPI"
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      # Publish to PyPI only if version doesn't exist
-      - name: Publish to PyPI
-        if: steps.check_pypi.outputs.exists != 'true'
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          verbose: true
 
       # Create GitHub Release
       - name: Create GitHub Release

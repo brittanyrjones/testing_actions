@@ -95,7 +95,7 @@ jobs:
           echo "tag=$TAG_VERSION" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-  publish:
+  release-prerelease:
     needs: create-tag
     runs-on: ubuntu-latest
     environment: testpypi
