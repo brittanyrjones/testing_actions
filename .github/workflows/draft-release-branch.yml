@@ -195,4 +195,4 @@ jobs:
           BRANCH_NAME="${{ steps.commit.outputs.branch_name }}"
           
           # Create PR using GitHub CLI
-          gh pr create --title "Release v${{ steps.version.outputs.version }}" --body "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} version bump and documentation updates." --base main --head "$BRANCH_NAME" --draft --label release
+          gh pr create --title "Release v${{ steps.version.outputs.version }}" --body "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} version bump and documentation updates." --base main --head "$BRANCH_NAME" --draft
