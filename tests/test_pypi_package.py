@@ -46,11 +46,22 @@ def test_latest_package():
             else:
                 python_path = os.path.join(venv_path, "bin", "python")
 
+            # Install uv in the virtual environment
+            print("\nInstalling uv...")
+            subprocess.run([
+                python_path,
+                "-m",
+                "pip",
+                "install",
+                "uv"
+            ], check=True, capture_output=True)
+
             # Clean up any existing installations
             print("\nCleaning up any existing installations...")
             subprocess.run([
                 python_path,
                 "-m",
+                "uv",
                 "pip",
                 "uninstall",
                 "-y",
@@ -62,6 +73,7 @@ def test_latest_package():
             subprocess.run([
                 python_path,
                 "-m",
+                "uv",
                 "pip",
                 "install",
                 "--no-deps",  # Don't install dependencies to avoid version conflicts
@@ -73,9 +85,9 @@ def test_latest_package():
             subprocess.run([
                 python_path,
                 "-m",
+                "uv",
                 "pip",
                 "install",
-                "--index-url", "https://pypi.org/simple/",
                 "aiohttp>=3.11.12",
                 "orjson>=3.10.15"
             ], check=True, capture_output=True)
@@ -142,5 +154,9 @@ except TypeError:
             print("Import test passed!")
 
         finally:
-            # No need to uninstall since we're using a temporary virtual environment
-            print("\nCleaning up...")
+            # Clean up build directory
+            print("\nCleaning up build directory...")
+            if os.path.exists("build"):
+                import shutil
+                shutil.rmtree("build")
+            print("Cleanup complete!")
