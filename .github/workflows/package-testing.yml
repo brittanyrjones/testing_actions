@@ -1,4 +1,4 @@
-name: Backward Compatibility Tests
+name: Package Compatibility Tests
 
 on:
   pull_request:
@@ -33,7 +33,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e ".[test]"
     
-    - name: Run backward compatibility tests
+    - name: Run package compatibility tests
       run: |
         pytest tests/test_pypi_package.py -v
     

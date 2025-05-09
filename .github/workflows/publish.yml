@@ -158,6 +158,7 @@ jobs:
                 echo "is_prerelease=false" >> $GITHUB_OUTPUT
               fi
             else
+              pip install tomli
               VERSION=$(python -c 'import tomli; print(tomli.load(open("pyproject.toml", "rb"))["project"]["version"])')
               echo "is_prerelease=false" >> $GITHUB_OUTPUT
             fi
