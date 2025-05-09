@@ -32,20 +32,27 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Trigger build-and-test workflow
+        uses: peter-evans/repository-dispatch@v2
         with:
-          python-version: "3.13"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: build-and-test
+          client-payload: '{"ref": "${{ github.ref }}"}'
 
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Wait for build-and-test workflow
+        uses: lewagon/wait-on-check-action@v1.3.1
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'build-and-test'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 50
 
-      - name: Build package
-        run: |
-          uv pip install build
-          python -m build
+      - name: Download build artifacts
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build-and-test.yml
+          name: dist
+          path: dist
 
       - name: Generate new version
         id: version
