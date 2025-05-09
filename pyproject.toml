@@ -14,8 +14,8 @@ dependencies = [
 docs = ["pdoc3"]
 
 [tool.setuptools]
-packages = ["hello_world"]
-package-dir = {"" = "hello_world"}
+packages = ["bjones_testing_actions"]
+package-dir = {"bjones_testing_actions" = "hello_world"}
 
 [project.urls]
 Homepage = "https://github.com/heroku/testing_actions"
