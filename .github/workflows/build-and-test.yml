@@ -111,6 +111,12 @@ jobs:
       - name: Run tox
         run: tox
 
+      - name: Clean up coverage files
+        run: |
+          rm -f .coverage*
+          rm -f coverage.xml
+          rm -rf htmlcov/
+
   lint:
     name: Lint with Ruff
     runs-on: ubuntu-latest
