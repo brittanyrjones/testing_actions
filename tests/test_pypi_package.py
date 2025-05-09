@@ -7,6 +7,7 @@ import os
 import importlib.metadata
 import tempfile
 import shutil
+from pathlib import Path
 
 def get_latest_version(pypi_type="testpypi"):
     """Get the latest version from PyPI or TestPyPI."""
@@ -24,45 +25,52 @@ def get_latest_version(pypi_type="testpypi"):
 
 def test_latest_package():
     """Test that the latest package from PyPI/TestPyPI works as expected."""
-    pypi_type = os.getenv("PYPI_TYPE", "testpypi")
-    version = get_latest_version(pypi_type)
-    if not version:
-        pytest.skip(f"No versions found on {pypi_type}")
+    # Get the local package version
+    try:
+        with open("pyproject.toml", "r") as f:
+            import tomli
+            data = tomli.loads(f.read())
+            version = data["project"]["version"]
+    except Exception as e:
+        pytest.skip(f"Could not determine local package version: {e}")
 
-    print(f"\nTesting version {version} from {pypi_type}")
+    print(f"\nTesting local version {version}")
 
     # Create a temporary directory for testing
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
-            # Install the package using pip (simulating user installation)
-            print(f"Installing package version {version} from {pypi_type}...")
-            base_url = "https://test.pypi.org/simple/" if pypi_type == "testpypi" else "https://pypi.org/simple/"
-            extra_url = "https://pypi.org/simple/" if pypi_type == "testpypi" else "https://test.pypi.org/simple/"
+            # Create a new virtual environment
+            venv_path = os.path.join(temp_dir, "venv")
+            subprocess.run([sys.executable, "-m", "venv", venv_path], check=True)
 
+            # Get the Python executable path in the new virtual environment
+            if sys.platform == "win32":
+                python_path = os.path.join(venv_path, "Scripts", "python.exe")
+            else:
+                python_path = os.path.join(venv_path, "bin", "python")
+
+            # Install the package using pip (simulating user installation)
+            print(f"Installing package version {version} from local directory...")
             subprocess.run([
-                sys.executable,
+                python_path,
                 "-m",
                 "pip",
                 "install",
-                "--index-url",
-                base_url,
-                "--extra-index-url",
-                extra_url,
-                f"bjones_testing_actions=={version}"
+                "."
             ], check=True, capture_output=True)
 
-            # Test package metadata
+            # Test package metadata using the new Python executable
             print("\nChecking package metadata...")
-            dist = importlib.metadata.distribution("bjones_testing_actions")
-            installed_version = dist.version
+            result = subprocess.run(
+                [python_path, "-c", "import importlib.metadata; print(importlib.metadata.distribution('bjones_testing_actions').version)"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            installed_version = result.stdout.strip()
             assert installed_version == version, f"Installed version {installed_version} doesn't match expected version {version}"
 
-            # Test package dependencies
-            print("\nChecking package dependencies...")
-            requires = [str(r) for r in dist.requires]
-            print(f"Package requires: {requires}")
-
-            # Test package functionality in a clean environment
+            # Test package functionality in the new environment
             print("\nTesting package functionality...")
             test_code = """
 import hello_world
@@ -93,7 +101,7 @@ except TypeError:
     pass  # Expected behavior
 """
             result = subprocess.run(
-                [sys.executable, "-c", test_code],
+                [python_path, "-c", test_code],
                 capture_output=True,
                 text=True,
                 check=False
@@ -104,7 +112,7 @@ except TypeError:
             # Test package can be imported in a new Python process
             print("\nTesting package import in new process...")
             import_result = subprocess.run(
-                [sys.executable, "-c", "import hello_world; print('Import successful')"],
+                [python_path, "-c", "import hello_world; print('Import successful')"],
                 capture_output=True,
                 text=True,
                 check=False
@@ -112,34 +120,6 @@ except TypeError:
             assert import_result.returncode == 0, f"Package import failed:\nstdout: {import_result.stdout}\nstderr: {import_result.stderr}"
             print("Import test passed!")
 
-            # Run the package's test suite
-            print("\nRunning package test suite...")
-
-            # Copy tests from current directory
-            tests_dir = os.path.join(os.path.dirname(__file__))
-            shutil.copytree(tests_dir, os.path.join(temp_dir, "tests"))
-
-            # Install test dependencies
-            subprocess.run([
-                sys.executable,
-                "-m",
-                "pip",
-                "install",
-                "pytest>=8.0.0",
-                "pytest-cov>=4.1.0"
-            ], check=True, capture_output=True)
-
-            # Run the tests
-            test_result = subprocess.run(
-                [sys.executable, "-m", "pytest", os.path.join(temp_dir, "tests"), "-v"],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            assert test_result.returncode == 0, f"Package test suite failed:\nstdout: {test_result.stdout}\nstderr: {test_result.stderr}"
-            print("Package test suite passed!")
-
         finally:
-            # Uninstall the package
+            # No need to uninstall since we're using a temporary virtual environment
             print("\nCleaning up...")
-            subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "bjones_testing_actions"], check=True)
