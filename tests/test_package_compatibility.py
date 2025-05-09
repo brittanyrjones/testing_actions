@@ -12,7 +12,7 @@ from pathlib import Path
 
 def get_available_versions():
     """Get the latest version from TestPyPI."""
-    package_name = "bjones_testing_actions"
+    package_name = "bjones-testing-actions"
     url = f"https://test.pypi.org/pypi/{package_name}/json"
     try:
         with urllib.request.urlopen(url) as response:
@@ -75,7 +75,7 @@ def install_version(version):
         "https://test.pypi.org/simple/",
         "--extra-index-url",
         "https://pypi.org/simple/",
-        f"bjones_testing_actions=={version}"
+        f"bjones-testing-actions=={version}"
     ], check=True)
     
     return python_path
@@ -135,7 +135,7 @@ def test_say_hello_module_import():
 
 def uninstall_package():
     """Uninstall the package."""
-    subprocess.run([sys.executable, "-m", "uv", "pip", "uninstall", "-y", "bjones_testing_actions"], check=True)
+    subprocess.run([sys.executable, "-m", "uv", "pip", "uninstall", "-y", "bjones-testing-actions"], check=True)
 
 @pytest.mark.parametrize("version", get_available_versions())
 def test_package_compatibility(version):
