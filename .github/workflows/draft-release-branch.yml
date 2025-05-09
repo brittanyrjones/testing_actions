@@ -177,8 +177,7 @@ jobs:
           
           # Add all files except .coverage
           git add .
-          git reset .coverage
-          git reset .coverage.*
+          git reset -- .coverage .coverage.*
           
           # Create commit with proper message
           git commit -m "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.version }}"
