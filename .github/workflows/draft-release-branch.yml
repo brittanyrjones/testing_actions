@@ -176,10 +176,10 @@ jobs:
           if [ "${{ steps.version.outputs.release_type }}" == "stable" ]; then
             # For stable releases, commit changelog and version updates
             git add CHANGELOG.md pyproject.toml
-            git commit -m "Stable v${{ steps.version.outputs.version }}"
+            git commit -m "Release v${{ steps.version.outputs.version }}"
           else
             # For non-stable releases, create an empty commit
-            git commit --allow-empty -m "Pre-release v${{ steps.version.outputs.version }}"
+            git commit --allow-empty -m "Release v${{ steps.version.outputs.version }}"
           fi
           
           # Push to the branch
@@ -195,4 +195,4 @@ jobs:
           BRANCH_NAME="${{ steps.commit.outputs.branch_name }}"
           
           # Create PR using GitHub CLI
-          gh pr create --title "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.version }}" --body "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} version bump and documentation updates." --base main --head "$BRANCH_NAME" --draft
+          gh pr create --title "Release v${{ steps.version.outputs.version }}" --body "${{ steps.version.outputs.release_type == 'stable' && 'Stable' || 'Pre-release' }} version bump and documentation updates." --base main --head "$BRANCH_NAME" --draft

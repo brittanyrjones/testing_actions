@@ -64,3 +64,12 @@ gh workflow run draft-release-branch.yml \
 
 echo "Workflow triggered! Check GitHub Actions for progress."
 
+# Create an empty commit for non-stable releases
+if [ "$RELEASE_TYPE" != "stable" ]; then
+    git commit --allow-empty -m "Release v$CURRENT_VERSION"
+else
+    # For stable releases, commit changelog and version updates
+    git add CHANGELOG.md pyproject.toml
+    git commit -m "Release v$CURRENT_VERSION"
+fi
+
