@@ -4,14 +4,11 @@ import json
 import urllib.request
 import subprocess
 import os
-import importlib.metadata
 import tempfile
-import shutil
-from pathlib import Path
 
 def get_latest_version(pypi_type="testpypi"):
     """Get the latest version from PyPI or TestPyPI."""
-    package_name = "bjones_testing_actions"
+    package_name = "bjones-testing-actions"
     base_url = "https://test.pypi.org" if pypi_type == "testpypi" else "https://pypi.org"
     url = f"{base_url}/pypi/{package_name}/json"
     try:
@@ -49,20 +46,44 @@ def test_latest_package():
             else:
                 python_path = os.path.join(venv_path, "bin", "python")
 
-            # Install the package using pip (simulating user installation)
-            print(f"Installing package version {version} from local directory...")
+            # Clean up any existing installations
+            print("\nCleaning up any existing installations...")
+            subprocess.run([
+                python_path,
+                "-m",
+                "pip",
+                "uninstall",
+                "-y",
+                "bjones-testing-actions"
+            ], check=False, capture_output=True)
+
+            # Install the package from local directory
+            print(f"\nInstalling package version {version} from local directory...")
             subprocess.run([
                 python_path,
                 "-m",
                 "pip",
                 "install",
+                "--no-deps",  # Don't install dependencies to avoid version conflicts
                 "."
+            ], check=True, capture_output=True)
+
+            # Install dependencies from PyPI
+            print("\nInstalling dependencies from PyPI...")
+            subprocess.run([
+                python_path,
+                "-m",
+                "pip",
+                "install",
+                "--index-url", "https://pypi.org/simple/",
+                "aiohttp>=3.11.12",
+                "orjson>=3.10.15"
             ], check=True, capture_output=True)
 
             # Test package metadata using the new Python executable
             print("\nChecking package metadata...")
             result = subprocess.run(
-                [python_path, "-c", "import importlib.metadata; print(importlib.metadata.distribution('bjones_testing_actions').version)"],
+                [python_path, "-c", "import importlib.metadata; print(importlib.metadata.distribution('bjones-testing-actions').version)"],
                 capture_output=True,
                 text=True,
                 check=True
