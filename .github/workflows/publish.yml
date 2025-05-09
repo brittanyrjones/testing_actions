@@ -89,7 +89,7 @@ jobs:
       - name: Check package existence
         id: check_package
         run: |
-          PACKAGE_NAME="bjones_testing_actions"
+          PACKAGE_NAME="bjones-testing-actions"
           VERSION="${{ steps.version_info.outputs.version }}"
           BASE_URL="${{ steps.version_info.outputs.is_prerelease == 'true' && 'https://test.pypi.org' || 'https://pypi.org' }}"
           
