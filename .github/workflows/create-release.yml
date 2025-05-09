@@ -3,8 +3,8 @@ name: Create Stable Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version to release (e.g., 1.0.0)'
+      previous_version:
+        description: 'Previous version (e.g., 0.3.28)'
         required: true
       bump_type:
         description: 'Type of version bump (major, minor, patch)'
@@ -34,6 +34,35 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
 
+      # Generate new version
+      - name: Generate new version
+        id: version
+        run: |
+          # Get previous version and bump type from inputs
+          PREV_VERSION="${{ github.event.inputs.previous_version }}"
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          
+          # Split version into components
+          IFS='.' read -r -a VERSION_PARTS <<< "$PREV_VERSION"
+          MAJOR="${VERSION_PARTS[0]}"
+          MINOR="${VERSION_PARTS[1]}"
+          PATCH="${VERSION_PARTS[2]}"
+          
+          # Generate new version based on bump type
+          case "$BUMP_TYPE" in
+            major)
+              VERSION="$((MAJOR + 1)).0.0"
+              ;;
+            minor)
+              VERSION="$MAJOR.$((MINOR + 1)).0"
+              ;;
+            patch)
+              VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+              ;;
+          esac
+          
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Get last tag
         id: last_tag
         run: |
@@ -42,37 +71,49 @@ jobs:
 
       - name: Create release branch
         run: |
-          git checkout -b "release-v${{ github.event.inputs.version }}"
+          git checkout -b "release-v${{ steps.version.outputs.VERSION }}"
 
       - name: Update version in pyproject.toml
         run: |
-          sed -i "s/^version = \".*\"/version = \"${{ github.event.inputs.version }}\"/" pyproject.toml
+          sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.VERSION }}\"/" pyproject.toml
 
       - name: Generate changelog
         run: |
-          if [ -n "${{ steps.last_tag.outputs.LAST_TAG }}" ]; then
-            git log --graph --format="%h %s" "${{ steps.last_tag.outputs.LAST_TAG }}..HEAD" > CHANGELOG.md
+          # Create new changelog entry
+          {
+            echo "## [${{ steps.version.outputs.VERSION }}] - $(date +%Y-%m-%d)"
+            echo ""
+            if [ -n "${{ steps.last_tag.outputs.LAST_TAG }}" ]; then
+              git log --graph --format="%h %s" "${{ steps.last_tag.outputs.LAST_TAG }}..HEAD"
+            else
+              git log --graph --format="%h %s"
+            fi
+            echo ""
+          } > CHANGELOG.md.new
+
+          # If CHANGELOG.md exists, prepend new content
+          if [ -f CHANGELOG.md ]; then
+            # Get the header (everything before the first ##)
+            sed -n '1,/^##/p' CHANGELOG.md | sed '$d' > CHANGELOG.md.tmp
+            # Add the new version section
+            cat CHANGELOG.md.new >> CHANGELOG.md.tmp
+            # Add the rest of the existing content (everything after the first ##)
+            sed -n '/^##/,$p' CHANGELOG.md >> CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
           else
-            git log --graph --format="%h %s" > CHANGELOG.md
+            # Create initial changelog if it doesn't exist
+            {
+              echo "# Changelog"
+              echo ""
+              echo "All notable changes to this project will be documented in this file."
+              echo ""
+              echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
+              echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+              echo ""
+              cat CHANGELOG.md.new
+            } > CHANGELOG.md
           fi
-
-      - name: Create release notes
-        run: |
-          mkdir -p releasenotes/package_name
-          echo "Stable Release ${{ github.event.inputs.version }}" > "releasenotes/package_name/v${{ github.event.inputs.version }}"
-
-      - name: Update documentation
-        run: |
-          # Update README.md if needed
-          if [ -f "README.md" ]; then
-            sed -i "s/version = \".*\"/version = \"${{ github.event.inputs.version }}\"/" README.md
-          fi
-          
-          # Update API documentation if needed
-          if [ -d "docs" ]; then
-            # Add any documentation update commands here
-            echo "Documentation updates completed"
-          fi
+          rm CHANGELOG.md.new
 
       - name: Run tests
         run: |
@@ -86,17 +127,17 @@ jobs:
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Stable Release v${{ github.event.inputs.version }}"
-          title: "Stable Release v${{ github.event.inputs.version }}"
+          commit-message: "Stable Release v${{ steps.version.outputs.VERSION }}"
+          title: "Stable Release v${{ steps.version.outputs.VERSION }}"
           body: |
             Stable release version bump and documentation updates.
             
             Changes:
-            - Updated version to ${{ github.event.inputs.version }}
+            - Updated version to ${{ steps.version.outputs.VERSION }}
             - Generated changelog
             - Created release notes
             - Updated documentation
             - Built package
-          branch: "release-v${{ github.event.inputs.version }}"
+          branch: "release-v${{ steps.version.outputs.VERSION }}"
           base: main
           draft: true 

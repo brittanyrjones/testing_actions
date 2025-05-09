@@ -2,6 +2,18 @@ name: Create Pre-Release Tag and Publish
 
 on:
   workflow_dispatch:
+    inputs:
+      previous_version:
+        description: 'Previous version (e.g., 0.3.28)'
+        required: true
+      bump_type:
+        description: 'Type of version bump (major, minor, patch)'
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
   push:
     branches:
       - main
@@ -34,8 +46,34 @@ jobs:
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           
-          # Get version from commit message
-          VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
+          # Get version from commit message or workflow inputs
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Get previous version and bump type from inputs
+            PREV_VERSION="${{ github.event.inputs.previous_version }}"
+            BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+            
+            # Split version into components
+            IFS='.' read -r -a VERSION_PARTS <<< "$PREV_VERSION"
+            MAJOR="${VERSION_PARTS[0]}"
+            MINOR="${VERSION_PARTS[1]}"
+            PATCH="${VERSION_PARTS[2]}"
+            
+            # Generate new version based on bump type
+            case "$BUMP_TYPE" in
+              major)
+                VERSION="$((MAJOR + 1)).0.0"
+                ;;
+              minor)
+                VERSION="$MAJOR.$((MINOR + 1)).0"
+                ;;
+              patch)
+                VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+                ;;
+            esac
+          else
+            # Get version from commit message for push events
+            VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -o 'release-v[0-9.]*' | cut -d'v' -f2)
+          fi
           echo "Found version: $VERSION"
           
           # For beta releases, find the latest beta number and increment

@@ -8,7 +8,7 @@ MAIN_BRANCH="main"
 usage() {
     echo "Usage: $0 <bump_type> <release_type> [version]"
     echo "  bump_type: major, minor, or patch"
-    echo "  release_type: rc, beta, or stable"
+    echo "  release_type: beta or stable"
     echo "  version: optional specific version (e.g., 0.3.24-beta)"
     exit 1
 }
@@ -69,63 +69,6 @@ categorize_changes() {
     echo "### Security"$'\n'"$security"
 }
 
-# Function to update README.md with latest version and release notes
-update_readme() {
-    local version=$1
-    local changes=$2
-    local readme_file="README.md"
-    
-    # Check if README.md exists
-    if [ ! -f "$readme_file" ]; then
-        echo "Error: README.md not found"
-        exit 1
-    fi
-
-    # Create a temporary file for the new content
-    {
-        # Copy the header section (everything before the first ##)
-        sed -n '1,/^##/p' "$readme_file" | sed '$d'
-        
-        # Add version information
-        echo "## Version $version"
-        echo ""
-        echo "### Latest Changes"
-        echo ""
-        echo "$changes"
-        echo ""
-        
-        # Add the rest of the file (everything after the first ##)
-        sed -n '/^##/,$p' "$readme_file" | sed '1d'
-    } > "${readme_file}.new"
-    
-    mv "${readme_file}.new" "$readme_file"
-}
-
-# Function to ensure pyproject.toml has proper documentation settings
-check_pyproject_docs() {
-    local pyproject_file="pyproject.toml"
-    
-    # Check if pyproject.toml exists
-    if [ ! -f "$pyproject_file" ]; then
-        echo "Error: pyproject.toml not found"
-        exit 1
-    fi
-
-    # Check for long description configuration
-    if ! grep -q "long-description" "$pyproject_file"; then
-        echo "Warning: long-description not configured in pyproject.toml"
-        echo "Add the following to your [project] section:"
-        echo 'long-description = { file = "README.md", content-type = "text/markdown" }'
-    fi
-
-    # Check for documentation URL
-    if ! grep -q "documentation" "$pyproject_file"; then
-        echo "Warning: documentation URL not configured in pyproject.toml"
-        echo "Add the following to your [project.urls] section:"
-        echo 'documentation = "https://your-package.readthedocs.io/"'
-    fi
-}
-
 # Function to update all documentation
 update_documentation() {
     local version=$1
@@ -135,15 +78,8 @@ update_documentation() {
     # Update version in pyproject.toml
     sed -i '' "s/^version = \".*\"/version = \"$version\"/" pyproject.toml
 
-    # Update CHANGELOG.md
+    # Create new changelog entry
     {
-        echo "# Changelog"
-        echo ""
-        echo "All notable changes to this project will be documented in this file."
-        echo ""
-        echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
-        echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
-        echo ""
         echo "## [$version] - $(date +%Y-%m-%d)"
         echo ""
         echo "$categorized_changes"
@@ -152,12 +88,27 @@ update_documentation() {
 
     # If CHANGELOG.md exists, prepend new content
     if [ -f CHANGELOG.md ]; then
-        cat CHANGELOG.md >> NEW_CHANGELOG.md
+        # Get the header (everything before the first ##)
+        sed -n '1,/^##/p' CHANGELOG.md | sed '$d' > CHANGELOG.md.tmp
+        # Add the new version section
+        cat NEW_CHANGELOG.md >> CHANGELOG.md.tmp
+        # Add the rest of the existing content (everything after the first ##)
+        sed -n '/^##/,$p' CHANGELOG.md >> CHANGELOG.md.tmp
+        mv CHANGELOG.md.tmp CHANGELOG.md
+    else
+        # Create initial changelog if it doesn't exist
+        {
+            echo "# Changelog"
+            echo ""
+            echo "All notable changes to this project will be documented in this file."
+            echo ""
+            echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
+            echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+            echo ""
+            cat NEW_CHANGELOG.md
+        } > CHANGELOG.md
     fi
-    mv NEW_CHANGELOG.md CHANGELOG.md
-
-    # Update README.md with version and changes
-    update_readme "$version" "$categorized_changes"
+    rm NEW_CHANGELOG.md
 }
 
 # Check if required arguments are provided
@@ -176,8 +127,8 @@ if [[ ! "$BUMP_TYPE" =~ ^(major|minor|patch)$ ]]; then
 fi
 
 # Validate release type
-if [[ ! "$RELEASE_TYPE" =~ ^(rc|beta|stable)$ ]]; then
-    echo "Error: release_type must be one of: rc, beta, stable"
+if [[ ! "$RELEASE_TYPE" =~ ^(beta|stable)$ ]]; then
+    echo "Error: release_type must be one of: beta, stable"
     usage
 fi
 
@@ -215,9 +166,7 @@ case "$BUMP_TYPE" in
 esac
 
 # Add release type suffix if needed
-if [ "$RELEASE_TYPE" = "rc" ]; then
-    NEW_VERSION="${NEW_VERSION}-rc1"
-elif [ "$RELEASE_TYPE" = "beta" ]; then
+if [ "$RELEASE_TYPE" = "beta" ]; then
     NEW_VERSION="${NEW_VERSION}-beta"
 fi
 
@@ -263,7 +212,7 @@ if [ "$RELEASE_TYPE" = "beta" ]; then
     exit 0
 fi
 
-# For RC and stable releases, update version and documentation
+# For stable releases, update version and documentation
 # Check PyPI documentation requirements
 check_pyproject_docs
 
@@ -278,25 +227,16 @@ CATEGORIZED_CHANGES=$(categorize_changes "$CHANGES")
 update_documentation "$NEW_VERSION" "$CHANGES" "$CATEGORIZED_CHANGES"
 
 # Add all files for commit
-git add pyproject.toml README.md CHANGELOG.md
+git add pyproject.toml CHANGELOG.md
 
 # Commit and push changes
 git commit -m "Release v$NEW_VERSION: update version and documentation"
 git push origin "$BRANCH_NAME"
 
-# Create draft PR with appropriate title based on release type
-if [ "$RELEASE_TYPE" = "stable" ]; then
-    PR_TITLE="Release v$NEW_VERSION"
-    PR_BODY="Release version bump from v$CURRENT_VERSION to v$NEW_VERSION"
-else
-    PR_TITLE="$RELEASE_TYPE v$NEW_VERSION"
-    PR_BODY="$RELEASE_TYPE version bump from v$CURRENT_VERSION to v$NEW_VERSION"
-fi
-
 # Create draft PR
 gh pr create \
-    --title "$PR_TITLE" \
-    --body "$PR_BODY" \
+    --title "Release v$NEW_VERSION" \
+    --body "Release version bump from v$CURRENT_VERSION to v$NEW_VERSION" \
     --base main \
     --head "$BRANCH_NAME" \
     --draft

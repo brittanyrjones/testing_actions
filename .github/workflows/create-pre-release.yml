@@ -4,8 +4,8 @@ name: Create Pre-release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Base version (e.g., 1.0.0)'
+      previous_version:
+        description: 'Previous version (e.g., 0.3.28)'
         required: true
       release_type:
         description: 'Type of pre-release'
@@ -43,14 +43,41 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
 
-      # Format version with alpha/beta suffix
-      - name: Extract version info
+      # Generate new version
+      - name: Generate new version
         id: version
         run: |
-          # Ensure version is properly formatted
-          BASE_VERSION="${{ github.event.inputs.version }}"
+          # Get previous version and bump type from inputs
+          PREV_VERSION="${{ github.event.inputs.previous_version }}"
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
           RELEASE_TYPE="${{ github.event.inputs.release_type }}"
-          VERSION="${BASE_VERSION}-${RELEASE_TYPE}"
+          
+          # Split version into components
+          IFS='.' read -r -a VERSION_PARTS <<< "$PREV_VERSION"
+          MAJOR="${VERSION_PARTS[0]}"
+          MINOR="${VERSION_PARTS[1]}"
+          PATCH="${VERSION_PARTS[2]}"
+          
+          # Generate new version based on bump type
+          case "$BUMP_TYPE" in
+            major)
+              VERSION="$((MAJOR + 1)).0.0"
+              ;;
+            minor)
+              VERSION="$MAJOR.$((MINOR + 1)).0"
+              ;;
+            patch)
+              VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+              ;;
+          esac
+          
+          # Add release type suffix if needed
+          if [ "$RELEASE_TYPE" = "beta" ]; then
+            VERSION="${VERSION}-beta"
+          elif [ "$RELEASE_TYPE" = "rc" ]; then
+            VERSION="${VERSION}-rc1"
+          fi
+          
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       # Create feature branch for the pre-release
@@ -80,8 +107,47 @@ jobs:
             
             Changes:
             - Built package
-            - No version update in pyproject.toml for pre-release
-            - No documentation updates required for pre-release
+            - No version update in main branch in pyproject.toml for pre-release
+            - No documentation updates in main branch required for pre-release
           branch: "release-v${{ steps.version.outputs.VERSION }}"
           base: main
           draft: true 
+
+      # Generate changelog
+      - name: Generate changelog
+        run: |
+          # Create new changelog entry
+          {
+            echo "## [${{ steps.version.outputs.VERSION }}] - $(date +%Y-%m-%d)"
+            echo ""
+            if [ -n "${{ steps.last_tag.outputs.LAST_TAG }}" ]; then
+              git log --graph --format="%h %s" "${{ steps.last_tag.outputs.LAST_TAG }}..HEAD"
+            else
+              git log --graph --format="%h %s"
+            fi
+            echo ""
+          } > CHANGELOG.md.new
+
+          # If CHANGELOG.md exists, prepend new content
+          if [ -f CHANGELOG.md ]; then
+            # Get the header (everything before the first ##)
+            sed -n '1,/^##/p' CHANGELOG.md | sed '$d' > CHANGELOG.md.tmp
+            # Add the new version section
+            cat CHANGELOG.md.new >> CHANGELOG.md.tmp
+            # Add the rest of the existing content (everything after the first ##)
+            sed -n '/^##/,$p' CHANGELOG.md >> CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+          else
+            # Create initial changelog if it doesn't exist
+            {
+              echo "# Changelog"
+              echo ""
+              echo "All notable changes to this project will be documented in this file."
+              echo ""
+              echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
+              echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+              echo ""
+              cat CHANGELOG.md.new
+            } > CHANGELOG.md
+          fi
+          rm CHANGELOG.md.new 
