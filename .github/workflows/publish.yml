@@ -99,6 +99,8 @@ jobs:
       - name: Run package compatibility test
         if: steps.check_package.outputs.exists != 'true'
         run: |
+          uv venv
+          source .venv/bin/activate
           uv pip install pytest pytest-asyncio pytest-cov
           PYPI_TYPE=testpypi pytest tests/test_pypi_package.py -v
 
@@ -158,6 +160,8 @@ jobs:
                 echo "is_prerelease=false" >> $GITHUB_OUTPUT
               fi
             else
+              uv venv
+              source .venv/bin/activate
               uv pip install tomli
               VERSION=$(python -c 'import tomli; print(tomli.load(open("pyproject.toml", "rb"))["project"]["version"])')
               echo "is_prerelease=false" >> $GITHUB_OUTPUT
@@ -194,11 +198,15 @@ jobs:
       - name: Run package compatibility test
         if: steps.check_package.outputs.exists != 'true'
         run: |
+          uv venv
+          source .venv/bin/activate
           uv pip install pytest pytest-asyncio pytest-cov
           PYPI_TYPE=pypi pytest tests/test_pypi_package.py -v
 
       - name: Run tests
         run: |
+          uv venv
+          source .venv/bin/activate
           uv pip install pytest pytest-asyncio pytest-cov
           python -m pytest tests/test_pypi_package.py -v
 
