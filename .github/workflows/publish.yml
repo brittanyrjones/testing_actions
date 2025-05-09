@@ -28,7 +28,7 @@ jobs:
       (github.event_name == 'workflow_dispatch') || 
       (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) ||
       (github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release-v'))
-    environment: ${{ (github.event_name == 'workflow_dispatch' && (github.event.inputs.release_type == 'beta' || github.event.inputs.release_type == 'alpha')) || (github.event_name == 'push' && (contains(github.ref, '-beta') || contains(github.ref, '-alpha'))) && 'testpypi' || 'pypi' }}
+    environment: pypi
     permissions:
       id-token: write
       contents: write
@@ -70,10 +70,17 @@ jobs:
               echo "is_prerelease=false" >> $GITHUB_OUTPUT
             fi
           else
-            VERSION=${GITHUB_REF#refs/tags/v}
-            if [[ $VERSION == *-beta* || $VERSION == *-alpha* ]]; then
-              echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              # Get version from tag
+              VERSION=${GITHUB_REF#refs/tags/v}
+              if [[ $VERSION == *-beta* || $VERSION == *-alpha* ]]; then
+                echo "is_prerelease=true" >> $GITHUB_OUTPUT
+              else
+                echo "is_prerelease=false" >> $GITHUB_OUTPUT
+              fi
             else
+              # For branch pushes, get version from package
+              VERSION=$(python -c 'import tomli; print(tomli.load(open("pyproject.toml", "rb"))["project"]["version"])')
               echo "is_prerelease=false" >> $GITHUB_OUTPUT
             fi
           fi
@@ -91,7 +98,7 @@ jobs:
         run: |
           PACKAGE_NAME="bjones-testing-actions"
           VERSION="${{ steps.version_info.outputs.version }}"
-          BASE_URL="${{ steps.version_info.outputs.is_prerelease == 'true' && 'https://test.pypi.org' || 'https://pypi.org' }}"
+          BASE_URL="https://pypi.org"
           
           if curl -s "$BASE_URL/pypi/$PACKAGE_NAME/$VERSION/json" | grep -q '"version":"'; then
             echo "exists=true" >> $GITHUB_OUTPUT
@@ -99,26 +106,25 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Set environment
-        run: |
-          if [[ "${{ steps.version_info.outputs.is_prerelease }}" == "true" ]]; then
-            echo "ENVIRONMENT=testpypi" >> $GITHUB_ENV
-          else
-            echo "ENVIRONMENT=pypi" >> $GITHUB_ENV
-          fi
-
-      - name: Publish package
-        if: steps.check_package.outputs.exists != 'true'
+      - name: Publish to TestPyPI (for beta/alpha)
+        if: steps.check_package.outputs.exists != 'true' && steps.version_info.outputs.is_prerelease == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: ${{ steps.version_info.outputs.is_prerelease == 'true' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
+          repository-url: https://test.pypi.org/legacy/
           verbose: true
 
       - name: Run package compatibility test
         if: steps.check_package.outputs.exists != 'true'
         run: |
           pip install pytest pytest-asyncio pytest-cov
-          PYPI_TYPE=${{ steps.version_info.outputs.is_prerelease == 'true' && 'testpypi' || 'pypi' }} pytest tests/test_pypi_package.py -v
+          PYPI_TYPE=pypi pytest tests/test_pypi_package.py -v
+
+      - name: Publish to PyPI
+        if: steps.check_package.outputs.exists != 'true' && success()
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://upload.pypi.org/legacy/
+          verbose: true
 
       - name: Run tests
         run: |

@@ -13,7 +13,6 @@ on:
         options:
           - stable
           - beta
-          - alpha
       bump_type:
         description: 'Type of version bump (major, minor, patch)'
         required: true
