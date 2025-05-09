@@ -62,11 +62,17 @@ jobs:
           BUMP_TYPE="${{ github.event.inputs.bump_type }}"
           RELEASE_TYPE="${{ github.event.inputs.release_type }}"
           
+          echo "Previous version: $PREV_VERSION"
+          echo "Bump type: $BUMP_TYPE"
+          echo "Release type: $RELEASE_TYPE"
+          
           # Split version into components
           IFS='.' read -r -a VERSION_PARTS <<< "$PREV_VERSION"
           MAJOR="${VERSION_PARTS[0]}"
           MINOR="${VERSION_PARTS[1]}"
           PATCH="${VERSION_PARTS[2]}"
+          
+          echo "Version parts: MAJOR=$MAJOR MINOR=$MINOR PATCH=$PATCH"
           
           # Generate new version based on bump type
           case "$BUMP_TYPE" in
@@ -86,6 +92,7 @@ jobs:
             VERSION="${VERSION}-${RELEASE_TYPE}"
           fi
           
+          echo "Generated version: $VERSION"
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "RELEASE_TYPE=$RELEASE_TYPE" >> $GITHUB_OUTPUT
 
@@ -97,6 +104,7 @@ jobs:
 
       - name: Create release branch
         run: |
+          echo "Creating branch: release-v${{ steps.version.outputs.VERSION }}"
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
           git checkout -b "release-v${{ steps.version.outputs.VERSION }}"

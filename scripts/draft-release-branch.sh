@@ -40,6 +40,8 @@ else
 fi
 
 echo "Current version: $CURRENT_VERSION"
+echo "Bump type: $BUMP_TYPE"
+echo "Release type: $RELEASE_TYPE"
 
 # Check if GitHub CLI is installed
 if ! command -v gh &> /dev/null; then
