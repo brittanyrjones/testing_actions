@@ -188,6 +188,8 @@ jobs:
           git push -u origin "$BRANCH_NAME"
 
       - name: Create Pull Request
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Get the branch name from the previous step
           BRANCH_NAME="${{ steps.commit.outputs.branch_name }}"
