@@ -111,7 +111,7 @@ jobs:
         if: steps.check_package.outputs.exists != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: ${{ steps.version_info.outputs.is_prerelease == 'true' && 'https://test.pypi.org/legacy/' || 'https://pypi.python.org/pypi' }}
+          repository-url: ${{ steps.version_info.outputs.is_prerelease == 'true' && 'https://test.pypi.org/legacy/' || 'https://upload.pypi.org/legacy/' }}
           verbose: true
 
       - name: Run package compatibility test
