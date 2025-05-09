@@ -86,6 +86,8 @@ jobs:
       # Create feature branch for the pre-release
       - name: Create release branch
         run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
           git checkout -b "release-v${{ steps.version.outputs.VERSION }}"
           git commit --allow-empty -m "Beta testing branch for v${{ steps.version.outputs.VERSION }}"
           git push -u origin "release-v${{ steps.version.outputs.VERSION }}"
