@@ -9,33 +9,61 @@ dependencies = [
     "orjson>=3.10.15",
 ]
 
-[project.optional-dependencies]
-test = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-    "tox>=4.11.0",
-]
+
+[dependency-groups]
+docs = ["pdoc3"]
 
 [tool.setuptools]
-packages = []
+packages = ["hello_world"]
 
 [project.urls]
+Homepage = "https://github.com/heroku/testing_actions"
+Documentation = "https://github.com/heroku/testing_actions"
+Repository = "https://github.com/heroku/testing_actions.git"
+"Bug Tracker" = "https://github.com/heroku/testing_actions/issues"
+Changelog = "https://github.com/heroku/testing_actions/CHANGELOG.md"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    "ruff>=0.1.0",
+    "coverage>=7.0.0"
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=hello_world --cov-report=term-missing"
+addopts = "--cov=hello_world --cov-report=term-missing -v"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 88
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "W", "F"]
+ignore = ["E501"]
 
 [tool.tox]
 legacy_tox_ini = """
 [tox]
-envlist = py310,py311
-isolated_build = True
+envlist = py310, py311, py312, py313
+skip_missing_interpreters = true
+
 
 [testenv]
-deps = 
-    pytest>=7.4.0
-    pytest-cov>=4.1.0
-commands = 
-    pytest tests/ -v --cov=hello_world --cov-report=term-missing
+extras = test
+setenv =
+    COVERAGE_FILE = .coverage.{envname}
+commands_pre =
+    coverage erase
+commands =
+    ruff check .
+    pytest
+    coverage report --fail-under=80 --show-missing
+    coverage erase
 """

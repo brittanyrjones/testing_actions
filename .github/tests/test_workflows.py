@@ -1,6 +1,5 @@
 import json
 import subprocess
-import pytest
 from pathlib import Path
 
 def run_act(workflow_file: str, event: str = "push", event_data: dict = None) -> subprocess.CompletedProcess:
