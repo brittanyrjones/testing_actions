@@ -170,6 +170,7 @@ jobs:
           rm CHANGELOG.md.new
 
       - name: Commit and push changes
+        id: commit
         run: |
           # Remove any .coverage files
           find . -name ".coverage" -type f -delete
@@ -184,6 +185,7 @@ jobs:
           
           # Push to the branch
           BRANCH_NAME="release-v${{ steps.version.outputs.version }}"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
           git push -u origin "$BRANCH_NAME"
 
       - name: Create Pull Request
@@ -201,6 +203,6 @@ jobs:
             - Created release notes
             - Updated documentation
             - Using pre-built and tested package
-          branch: "$BRANCH_NAME"
+          branch: "${{ steps.commit.outputs.branch_name }}"
           base: main
           draft: true 
