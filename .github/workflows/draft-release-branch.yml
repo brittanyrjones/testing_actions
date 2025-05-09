@@ -1,4 +1,4 @@
-name: Create Release Branch
+name: Draft Release Branch
 
 on:
   workflow_dispatch:
@@ -24,7 +24,7 @@ on:
           - patch
 
 jobs:
-  create-release:
+  draft-release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

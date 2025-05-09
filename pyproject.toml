@@ -15,6 +15,7 @@ docs = ["pdoc3"]
 
 [tool.setuptools]
 packages = ["hello_world"]
+package-dir = {"" = "hello_world"}
 
 [project.urls]
 Homepage = "https://github.com/heroku/testing_actions"
