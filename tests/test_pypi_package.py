@@ -28,9 +28,9 @@ def test_latest_package():
     version = get_latest_version(pypi_type)
     if not version:
         pytest.skip(f"No versions found on {pypi_type}")
-    
+
     print(f"\nTesting version {version} from {pypi_type}")
-    
+
     # Create a temporary directory for testing
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
@@ -38,7 +38,7 @@ def test_latest_package():
             print(f"Installing package version {version} from {pypi_type}...")
             base_url = "https://test.pypi.org/simple/" if pypi_type == "testpypi" else "https://pypi.org/simple/"
             extra_url = "https://pypi.org/simple/" if pypi_type == "testpypi" else "https://test.pypi.org/simple/"
-            
+
             subprocess.run([
                 sys.executable,
                 "-m",
@@ -56,12 +56,12 @@ def test_latest_package():
             dist = importlib.metadata.distribution("bjones_testing_actions")
             installed_version = dist.version
             assert installed_version == version, f"Installed version {installed_version} doesn't match expected version {version}"
-            
+
             # Test package dependencies
             print("\nChecking package dependencies...")
             requires = [str(r) for r in dist.requires]
             print(f"Package requires: {requires}")
-            
+
             # Test package functionality in a clean environment
             print("\nTesting package functionality...")
             test_code = """
@@ -100,7 +100,7 @@ except TypeError:
             )
             assert result.returncode == 0, f"Tests failed for version {version}:\nstdout: {result.stdout}\nstderr: {result.stderr}"
             print("Functionality tests passed!")
-            
+
             # Test package can be imported in a new Python process
             print("\nTesting package import in new process...")
             import_result = subprocess.run(
@@ -111,14 +111,14 @@ except TypeError:
             )
             assert import_result.returncode == 0, f"Package import failed:\nstdout: {import_result.stdout}\nstderr: {import_result.stderr}"
             print("Import test passed!")
-            
+
             # Run the package's test suite
             print("\nRunning package test suite...")
-            
+
             # Copy tests from current directory
             tests_dir = os.path.join(os.path.dirname(__file__))
             shutil.copytree(tests_dir, os.path.join(temp_dir, "tests"))
-            
+
             # Install test dependencies
             subprocess.run([
                 sys.executable,
@@ -128,7 +128,7 @@ except TypeError:
                 "pytest>=8.0.0",
                 "pytest-cov>=4.1.0"
             ], check=True, capture_output=True)
-            
+
             # Run the tests
             test_result = subprocess.run(
                 [sys.executable, "-m", "pytest", os.path.join(temp_dir, "tests"), "-v"],
@@ -138,8 +138,8 @@ except TypeError:
             )
             assert test_result.returncode == 0, f"Package test suite failed:\nstdout: {test_result.stdout}\nstderr: {test_result.stderr}"
             print("Package test suite passed!")
-            
+
         finally:
             # Uninstall the package
             print("\nCleaning up...")
-            subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "bjones_testing_actions"], check=True) 
+            subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "bjones_testing_actions"], check=True)

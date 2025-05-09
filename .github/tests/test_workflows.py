@@ -57,7 +57,7 @@ def test_publish_pre_release_workflow():
     """Test the pre-release workflow."""
     result = run_act("publish-pre-release.yml")
     assert result.returncode == 0, f"Workflow validation failed: {result.stderr}"
-    
+
     # Check that the workflow would run the expected steps
     assert "Run Set up Python" in result.stdout
     assert "Run Install uv" in result.stdout
@@ -88,14 +88,14 @@ def test_publish_release_workflow():
         "commits": [],
         "head_commit": None
     }
-    
+
     result = run_act("publish-release.yml", event_data=event_data)
     assert result.returncode == 0, f"Workflow validation failed: {result.stderr}"
-    
+
     # Check that the workflow would run the expected steps
     assert "Run Set up Python" in result.stdout
     assert "Run Install uv" in result.stdout
     assert "Run Tests" in result.stdout
     assert "Run Build the artifact" in result.stdout
     assert "Run Publish to PyPI" in result.stdout
-    assert "Run Create GitHub Release" in result.stdout 
+    assert "Run Create GitHub Release" in result.stdout
