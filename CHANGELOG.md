@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2025-05-09
+
+* f18660a t
+* 8b5194c tesing
+*   02eaaa7 Merge pull request #121 from brittanyrjones/release-v0.3.28
+|\  
+| * 224f3a0 Release v0.3.28
+|/  
+* 92c90b5 tesing
+*   e39e064 Merge pull request #120 from brittanyrjones/release-v0.3.27
+|\  
+| * a2a7524 Stable v0.3.27
+|/  
+* 9af73ef tesing
+* fbc5cc1 tesing
+* 869ca78 tesing
+* 2a88d33 tesitng
+* c5c78a4 t
+* d6b9ae0 tesing
+* 8b424c8 t
+* 6a59e04 testing
+* 0b109f7 t
+* 7d8444e t
+* 46f6b39 tesing
+* aba5e08 tesing
+* a9fe7ca tesing
+* 3174af1 tesing
+* 72f9e06 tesing
+* 9b0eaae tsing
+* 7eea919 testing
+* 5013c88 testing
+* 0358ef5 tesing
+* e5ba165 tesing
+* f25dea9 tesing
+* adf166e testing
+* f91c6a3 testing
+* a0f33e5 testing
+
 ## [0.3.28] - 2025-05-09
 
 * 92c90b5 tesing
