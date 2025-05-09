@@ -60,7 +60,6 @@ jobs:
   release-stable:
     needs: create-tag
     runs-on: ubuntu-latest
-    environment: pypi
     steps:
       - uses: actions/checkout@v4
         with:
