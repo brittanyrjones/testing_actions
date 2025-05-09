@@ -22,7 +22,87 @@ on:
     branches: [main]
 
 jobs:
-  publish:
+  publish-testpypi:
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.release_type == 'beta' || github.event.inputs.release_type == 'alpha')) || 
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && (contains(github.ref, '-beta') || contains(github.ref, '-alpha')))
+    environment: testpypi
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Download build artifacts
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build-and-test.yml
+          name: dist
+          path: dist
+          branch: main
+
+      - name: Get version info
+        id: version_info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "push" ]; then
+            NOTES=$(git tag -l --format='%(contents)' "v$VERSION")
+            echo "notes=$NOTES" >> $GITHUB_OUTPUT
+          else
+            echo "notes=Manual release of version $VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check package existence
+        id: check_package
+        run: |
+          PACKAGE_NAME="bjones-testing-actions"
+          VERSION="${{ steps.version_info.outputs.version }}"
+          BASE_URL="https://test.pypi.org"
+          
+          if curl -s "$BASE_URL/pypi/$PACKAGE_NAME/$VERSION/json" | grep -q '"version":"'; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to TestPyPI
+        if: steps.check_package.outputs.exists != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          verbose: true
+
+      - name: Run package compatibility test
+        if: steps.check_package.outputs.exists != 'true'
+        run: |
+          pip install pytest pytest-asyncio pytest-cov
+          PYPI_TYPE=testpypi pytest tests/test_pypi_package.py -v
+
+  publish-pypi:
     runs-on: ubuntu-latest
     if: |
       (github.event_name == 'workflow_dispatch') || 
@@ -57,7 +137,7 @@ jobs:
           workflow: build-and-test.yml
           name: dist
           path: dist
-          branch: main  # Get artifacts from main branch
+          branch: main
 
       - name: Get version info
         id: version_info
@@ -71,7 +151,6 @@ jobs:
             fi
           else
             if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-              # Get version from tag
               VERSION=${GITHUB_REF#refs/tags/v}
               if [[ $VERSION == *-beta* || $VERSION == *-alpha* ]]; then
                 echo "is_prerelease=true" >> $GITHUB_OUTPUT
@@ -79,13 +158,11 @@ jobs:
                 echo "is_prerelease=false" >> $GITHUB_OUTPUT
               fi
             else
-              # For branch pushes, get version from package
               VERSION=$(python -c 'import tomli; print(tomli.load(open("pyproject.toml", "rb"))["project"]["version"])')
               echo "is_prerelease=false" >> $GITHUB_OUTPUT
             fi
           fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          # Get changelog from tag message if it exists
           if [ "${{ github.event_name }}" = "push" ]; then
             NOTES=$(git tag -l --format='%(contents)' "v$VERSION")
             echo "notes=$NOTES" >> $GITHUB_OUTPUT
@@ -106,11 +183,11 @@ jobs:
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
-      - name: Publish to TestPyPI (for beta/alpha)
-        if: steps.check_package.outputs.exists != 'true' && steps.version_info.outputs.is_prerelease == 'true'
+      - name: Publish to PyPI
+        if: steps.check_package.outputs.exists != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository-url: https://test.pypi.org/legacy/
+          repository-url: https://upload.pypi.org/legacy/
           verbose: true
 
       - name: Run package compatibility test
@@ -118,13 +195,6 @@ jobs:
         run: |
           pip install pytest pytest-asyncio pytest-cov
           PYPI_TYPE=pypi pytest tests/test_pypi_package.py -v
-
-      - name: Publish to PyPI
-        if: steps.check_package.outputs.exists != 'true' && success()
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://upload.pypi.org/legacy/
-          verbose: true
 
       - name: Run tests
         run: |
