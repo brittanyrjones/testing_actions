@@ -39,3 +39,9 @@ jobs:
     - name: Check test coverage
       run: |
         pytest --cov=hello_world --cov-report=term-missing tests/test_backward_compatibility.py
+
+    - name: Clean up coverage files
+      run: |
+        rm -f .coverage*
+        rm -f coverage.xml
+        rm -rf htmlcov/

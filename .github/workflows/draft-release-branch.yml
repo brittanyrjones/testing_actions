@@ -1,4 +1,4 @@
-name: Create Stable Release
+name: Create Release Branch
 
 on:
   workflow_dispatch:
@@ -6,6 +6,14 @@ on:
       previous_version:
         description: 'Previous version (e.g., 0.3.28)'
         required: true
+      release_type:
+        description: 'Type of release'
+        required: true
+        type: choice
+        options:
+          - stable
+          - beta
+          - alpha
       bump_type:
         description: 'Type of version bump (major, minor, patch)'
         required: true
@@ -24,16 +32,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python 
-        uses: actions/setup-python@v3
+      - name: Download build artifacts
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build-and-test.yml
+          name: dist
+          path: dist
+          run_id: ${{ github.sha }}
 
-      # Generate new version
       - name: Generate new version
         id: version
         run: |
-          # Get previous version and bump type from inputs
+          # Get inputs
           PREV_VERSION="${{ github.event.inputs.previous_version }}"
           BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          RELEASE_TYPE="${{ github.event.inputs.release_type }}"
           
           # Split version into components
           IFS='.' read -r -a VERSION_PARTS <<< "$PREV_VERSION"
@@ -54,7 +67,13 @@ jobs:
               ;;
           esac
           
+          # Add release type suffix if needed
+          if [ "$RELEASE_TYPE" != "stable" ]; then
+            VERSION="${VERSION}-${RELEASE_TYPE}"
+          fi
+          
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "RELEASE_TYPE=$RELEASE_TYPE" >> $GITHUB_OUTPUT
 
       - name: Get last tag
         id: last_tag
@@ -64,9 +83,12 @@ jobs:
 
       - name: Create release branch
         run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
           git checkout -b "release-v${{ steps.version.outputs.VERSION }}"
 
       - name: Update version in pyproject.toml
+        if: steps.version.outputs.RELEASE_TYPE == 'stable'
         run: |
           sed -i "s/^version = \".*\"/version = \"${{ steps.version.outputs.VERSION }}\"/" pyproject.toml
 
@@ -108,30 +130,27 @@ jobs:
           fi
           rm CHANGELOG.md.new
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-      - name: Install the project
-        run: uv sync --all-extras --dev
-      - name: Run Tests
-        run: uv run pytest --cov=hello_world --cov-report=term-missing --cov-fail-under=80
+      - name: Commit and push changes
+        run: |
+          git add -A ':!.coverage'
+          git commit -m "${{ steps.version.outputs.RELEASE_TYPE == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.VERSION }}"
+          git push -u origin "release-v${{ steps.version.outputs.VERSION }}"
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "Stable Release v${{ steps.version.outputs.VERSION }}"
-          title: "Stable Release v${{ steps.version.outputs.VERSION }}"
+          commit-message: "${{ steps.version.outputs.RELEASE_TYPE == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.VERSION }}"
+          title: "${{ steps.version.outputs.RELEASE_TYPE == 'stable' && 'Stable' || 'Pre-release' }} v${{ steps.version.outputs.VERSION }}"
           body: |
-            Stable release version bump and documentation updates.
+            ${{ steps.version.outputs.RELEASE_TYPE == 'stable' && 'Stable' || 'Pre-release' }} version bump and documentation updates.
             
             Changes:
             - Updated version to ${{ steps.version.outputs.VERSION }}
             - Generated changelog
             - Created release notes
             - Updated documentation
-            - Built package
+            - Using pre-built and tested package
           branch: "release-v${{ steps.version.outputs.VERSION }}"
           base: main
           draft: true 

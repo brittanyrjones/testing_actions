@@ -1,0 +1,123 @@
+name: Publish Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.0 or 1.0.0-beta.1)'
+        required: true
+      release_type:
+        description: 'Type of release'
+        required: true
+        type: choice
+        options:
+          - stable
+          - beta
+          - alpha
+  push:
+    tags:
+      - 'v*'  # Matches version tags like v1.0.0, v1.0.0-beta.1, etc.
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: ${{ (github.event_name == 'workflow_dispatch' && (github.event.inputs.release_type == 'beta' || github.event.inputs.release_type == 'alpha')) || (github.event_name == 'push' && (contains(github.ref, '-beta') || contains(github.ref, '-alpha'))) && 'testpypi' || 'pypi' }}
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Download build artifacts
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build-and-test.yml
+          name: dist
+          path: dist
+          branch: main  # Get artifacts from main branch
+
+      - name: Get version info
+        id: version_info
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            if [[ "${{ github.event.inputs.release_type }}" == "beta" || "${{ github.event.inputs.release_type }}" == "alpha" ]]; then
+              echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+            if [[ $VERSION == *-beta* || $VERSION == *-alpha* ]]; then
+              echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Get changelog from tag message if it exists
+          if [ "${{ github.event_name }}" = "push" ]; then
+            NOTES=$(git tag -l --format='%(contents)' "v$VERSION")
+            echo "notes=$NOTES" >> $GITHUB_OUTPUT
+          else
+            echo "notes=Manual release of version $VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check package existence
+        id: check_package
+        run: |
+          PACKAGE_NAME="bjones_testing_actions"
+          VERSION="${{ steps.version_info.outputs.version }}"
+          BASE_URL="${{ steps.version_info.outputs.is_prerelease == 'true' && 'https://test.pypi.org' || 'https://pypi.org' }}"
+          
+          if curl -s "$BASE_URL/pypi/$PACKAGE_NAME/$VERSION/json" | grep -q '"version":"'; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set environment
+        run: |
+          if [[ "${{ steps.version_info.outputs.is_prerelease }}" == "true" ]]; then
+            echo "ENVIRONMENT=testpypi" >> $GITHUB_ENV
+          else
+            echo "ENVIRONMENT=pypi" >> $GITHUB_ENV
+          fi
+
+      - name: Publish package
+        if: steps.check_package.outputs.exists != 'true'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: ${{ steps.version_info.outputs.is_prerelease == 'true' && 'https://test.pypi.org/legacy/' || 'https://pypi.org/legacy/' }}
+          verbose: true
+
+      - name: Run package compatibility test
+        if: steps.check_package.outputs.exists != 'true'
+        run: |
+          pip install pytest pytest-asyncio pytest-cov
+          PYPI_TYPE=${{ steps.version_info.outputs.is_prerelease == 'true' && 'testpypi' || 'pypi' }} pytest tests/test_pypi_package.py -v
+
+      - name: Run tests
+        run: |
+          python -m pytest tests/test_pypi_package.py -v
+
+      - name: Clean up coverage files
+        run: |
+          rm -f .coverage*
+          rm -f coverage.xml
+          rm -rf htmlcov/

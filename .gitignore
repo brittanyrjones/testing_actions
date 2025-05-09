@@ -1,6 +1,8 @@
 # Python files
 __pycache__/
 .venv/
+.venv-test/
+
 venv/
 .DS_Store
 .vscode/
@@ -10,3 +12,9 @@ dist/
 **.egg-info/
 
 .codegenie/
+
+# Coverage files
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
